@@ -1,0 +1,45 @@
+# Operatsion tizim fayllari (OS metadata)
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+[Dd]esktop.ini
+
+# Tahrirlovchi va IDE sozlamalari (Editors / IDEs)
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*~
+
+# Paketlar va bog'liqliklar (Dependencies - agar kelgusida qo'shilsa)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Muhit o'zgaruvchilari va maxfiy ma'lumotlar (Environment & secrets)
+.env
+.env.local
+.env.*.local
+*.pem
+
+# Vaqtinchalik va yig'ma fayllar (Temporary & build artifacts)
+dist/
+build/
+out/
+.cache/
+.temp/
+.tmp/
+*.log

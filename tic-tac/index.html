@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tic-Tac-Toe | X va O O'yini</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="game-container">
+    <header class="game-header">
+      <h1>Tic-Tac-Toe</h1>
+      <p class="subtitle">X va O O'yini</p>
+    </header>
+
+    <!-- O'yin rejimi (Mode selection) -->
+    <div class="mode-selector">
+      <button id="pvpModeBtn" class="mode-btn active" data-mode="pvp">👥 2 O'yinchi</button>
+      <button id="aiModeBtn" class="mode-btn" data-mode="ai">🤖 Kompyuterga qarshi</button>
+    </div>
+
+    <!-- AI qiyinlik darajasi (AI difficulty) -->
+    <div id="aiDifficultyContainer" class="ai-difficulty hidden">
+      <label for="aiDifficulty">Daraja:</label>
+      <select id="aiDifficulty">
+        <option value="easy">Oson</option>
+        <option value="hard" selected>Aqlli (Yengilmas)</option>
+      </select>
+    </div>
+
+    <!-- Hisoblar paneli (Scoreboard) -->
+    <div class="score-board">
+      <div class="score-card player-x active-turn" id="scoreCardX">
+        <span class="player-name">O'yinchi X</span>
+        <span class="score" id="scoreX">0</span>
+      </div>
+      <div class="score-card score-draw" id="scoreCardDraw">
+        <span class="player-name">Durang</span>
+        <span class="score" id="scoreDraw">0</span>
+      </div>
+      <div class="score-card player-o" id="scoreCardO">
+        <span class="player-name">O'yinchi O</span>
+        <span class="score" id="scoreO">0</span>
+      </div>
+    </div>
+
+    <!-- Holat xabari (Status Message) -->
+    <div class="status-message" id="statusMessage">
+      Navbat: <span class="turn-highlight x-color">X</span>
+    </div>
+
+    <!-- O'yin maydoni (3x3 Grid) -->
+    <div class="board" id="board">
+      <button class="cell" data-index="0" aria-label="Katak 1"></button>
+      <button class="cell" data-index="1" aria-label="Katak 2"></button>
+      <button class="cell" data-index="2" aria-label="Katak 3"></button>
+      <button class="cell" data-index="3" aria-label="Katak 4"></button>
+      <button class="cell" data-index="4" aria-label="Katak 5"></button>
+      <button class="cell" data-index="5" aria-label="Katak 6"></button>
+      <button class="cell" data-index="6" aria-label="Katak 7"></button>
+      <button class="cell" data-index="7" aria-label="Katak 8"></button>
+      <button class="cell" data-index="8" aria-label="Katak 9"></button>
+    </div>
+
+    <!-- Boshqaruv tugmalari (Action buttons) -->
+    <div class="controls">
+      <button id="restartBtn" class="btn btn-primary">🔄 Yangi raund</button>
+      <button id="resetScoreBtn" class="btn btn-secondary">🗑️ Hisobni tozalash</button>
+      <button id="soundToggleBtn" class="btn btn-icon" title="Ovozni yoqish/o'chirish">🔊</button>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
