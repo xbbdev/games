@@ -67,7 +67,21 @@ class App {
                 modal_choose_art: "Pazl uchun rasm tanlang",
                 upload_prompt: "Oʻz suratingizni yuklang (JPG/PNG)",
                 size_label: "Oʻlcham:",
-                locked: "Qulflangan"
+                locked: "Qulflangan",
+                quick_preview_hint: "Qoʻyib yuboring (Yashirish uchun)",
+                tap_place_hint: "Boʻlak tanlandi! Doskadagi kerakli katakni bosing",
+                shortcuts_title: "Klaviatura Tezkor Tugmalari",
+                sc_hint: "Aqlli maslahat (Bitta bo'lakni o'z joyiga uchirish)",
+                sc_preview: "Asl rasmni koʻrish (Bosib turganda bir zumda koʻrinadi)",
+                sc_restart: "Pazlni qayta boshlash",
+                sc_music: "Tinchlantiruvchi meditatsion musiqani yoqish/oʻchirish",
+                sc_sound: "Ovoz effektlarini yoqish/oʻchirish",
+                sc_fullscreen: "Toʻliq ekran rejimiga oʻtish",
+                sc_modes: "Oʻyin rejimlarini tanlash (1: Mozaika, 2: Bosqichlar, 3: Suriluvchi, 4: Almashtirish)",
+                sc_escape: "Oynalarni yopish / Tanlangan bo'lakni bekor qilish",
+                btn_close: "Yopish",
+                btn_got_it: "Tushundim",
+                star_target_tip: "🎯 3★: {m} qadam, {t}s"
             },
             en: {
                 app_title: "PUZZLE MASTER",
@@ -99,7 +113,21 @@ class App {
                 modal_choose_art: "Select Puzzle Artwork",
                 upload_prompt: "Upload your custom photo (JPG/PNG)",
                 size_label: "Size:",
-                locked: "Locked"
+                locked: "Locked",
+                quick_preview_hint: "Release to hide preview",
+                tap_place_hint: "Piece selected! Tap board slot to place",
+                shortcuts_title: "Keyboard Shortcuts",
+                sc_hint: "Smart Hint (Fly one piece to its place)",
+                sc_preview: "Quick Preview (Hold to peek artwork)",
+                sc_restart: "Restart current puzzle",
+                sc_music: "Toggle ambient zen music",
+                sc_sound: "Toggle sound FX",
+                sc_fullscreen: "Toggle fullscreen mode",
+                sc_modes: "Game modes (1: Jigsaw, 2: Campaign, 3: Sliding, 4: Swap)",
+                sc_escape: "Close modals / Deselect piece",
+                btn_close: "Close",
+                btn_got_it: "Got it",
+                star_target_tip: "🎯 3★: {m} moves, {t}s"
             },
             ru: {
                 app_title: "МАСТЕР ПАЗЛОВ",
@@ -131,7 +159,21 @@ class App {
                 modal_choose_art: "Выберите изображение",
                 upload_prompt: "Загрузить своё фото (JPG/PNG)",
                 size_label: "Размер:",
-                locked: "Закрыто"
+                locked: "Закрыто",
+                quick_preview_hint: "Отпустите, чтобы скрыть",
+                tap_place_hint: "Элемент выбран! Нажмите на поле для установки",
+                shortcuts_title: "Горячие клавиши",
+                sc_hint: "Подсказка (Установить один элемент)",
+                sc_preview: "Быстрый просмотр (Удерживайте для просмотра)",
+                sc_restart: "Начать уровень заново",
+                sc_music: "Вкл/выкл медитативную музыку",
+                sc_sound: "Вкл/выкл звуковые эффекты",
+                sc_fullscreen: "Полноэкранный режим",
+                sc_modes: "Режимы игры (1: Мозаика, 2: Кампания, 3: Пятнашки, 4: Обмен)",
+                sc_escape: "Закрыть окна / Снять выделение",
+                btn_close: "Закрыть",
+                btn_got_it: "Понятно",
+                star_target_tip: "🎯 3★: {m} ходов, {t}с"
             }
         };
     }
@@ -143,6 +185,7 @@ class App {
     init() {
         this.cacheDOMElements();
         this.bindEvents();
+        this.setupKeyboardShortcuts();
         this.applyLanguage();
         this.setupTheme();
 
@@ -157,6 +200,7 @@ class App {
         this.hudTime = document.getElementById('hud-time-val');
         this.hudStarsContainer = document.getElementById('hud-stars');
         this.hudStarsGroup = document.getElementById('hud-stars-group');
+        this.hudStarTarget = document.getElementById('hud-star-target');
 
         // Progress meter
         this.hudProgressWrap = document.getElementById('hud-progress-wrap');
@@ -172,13 +216,22 @@ class App {
         this.btnTrayLeft = document.getElementById('btn-tray-left');
         this.btnTrayRight = document.getElementById('btn-tray-right');
 
-        // Controls
+        // Top Controls
         this.btnSound = document.getElementById('btn-sound');
         this.btnMusic = document.getElementById('btn-music');
         this.btnFullscreen = document.getElementById('btn-fullscreen');
+        this.btnShortcuts = document.getElementById('btn-shortcuts');
+        this.btnTheme = document.getElementById('btn-theme');
+        this.themeIcon = document.getElementById('theme-icon');
         this.langSelect = document.getElementById('lang-select');
-        this.themeSelect = document.getElementById('theme-select');
         this.sizeSelect = document.getElementById('size-select');
+
+        // In-board preview & banner
+        this.boardPreviewCard = document.getElementById('board-preview-card');
+        this.boardPreviewImg = document.getElementById('board-preview-img');
+        this.quickPreviewOverlay = document.getElementById('quick-preview-overlay');
+        this.quickPreviewImg = document.getElementById('quick-preview-img');
+        this.tapPlaceBanner = document.getElementById('tap-place-banner');
 
         // Modals
         this.levelModal = document.getElementById('level-modal');
@@ -186,7 +239,9 @@ class App {
         this.victoryModal = document.getElementById('victory-modal');
         this.autoAdvanceText = document.getElementById('auto-advance-text');
         this.previewModal = document.getElementById('preview-modal');
+        this.shortcutsModal = document.getElementById('shortcuts-modal');
         this.imageUploadInput = document.getElementById('image-upload-input');
+        this.previewImageLarge = document.getElementById('preview-image-large');
     }
 
     bindEvents() {
@@ -213,24 +268,53 @@ class App {
 
         this.btnFullscreen.addEventListener('click', () => this.toggleFullscreen());
 
+        if (this.btnShortcuts) {
+            this.btnShortcuts.addEventListener('click', () => this.showShortcutsModal());
+        }
+
+        if (this.btnTheme) {
+            this.btnTheme.addEventListener('click', () => this.toggleTheme());
+        }
+
         this.langSelect.addEventListener('change', (e) => {
             this.lang = e.target.value;
             this.applyLanguage();
-        });
-
-        this.themeSelect.addEventListener('change', (e) => {
-            this.theme = e.target.value;
-            localStorage.setItem('pazzle_theme', this.theme);
-            document.documentElement.setAttribute('data-theme', this.theme);
-            if (this.activeGame && this.activeGame.render) {
-                this.activeGame.render();
-            }
         });
 
         this.sizeSelect.addEventListener('change', (e) => {
             this.currentSize = parseInt(e.target.value, 10);
             this.startCurrentModeGame();
         });
+
+        // Hold-to-preview & Click-to-preview on Quick Preview
+        const btnPrev = document.getElementById('btn-preview');
+        btnPrev.addEventListener('mousedown', (e) => {
+            if (e.button === 0) this.showQuickPreview();
+        });
+        btnPrev.addEventListener('mouseup', () => this.hideQuickPreview());
+        btnPrev.addEventListener('mouseleave', () => this.hideQuickPreview());
+        btnPrev.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            this.showQuickPreview();
+        }, { passive: false });
+        btnPrev.addEventListener('touchend', () => this.hideQuickPreview());
+
+        if (this.boardPreviewCard) {
+            this.boardPreviewCard.addEventListener('mousedown', (e) => {
+                if (e.button === 0) this.showQuickPreview();
+            });
+            this.boardPreviewCard.addEventListener('mouseup', () => this.hideQuickPreview());
+            this.boardPreviewCard.addEventListener('mouseleave', () => this.hideQuickPreview());
+            this.boardPreviewCard.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                this.showQuickPreview();
+            }, { passive: false });
+            this.boardPreviewCard.addEventListener('touchend', () => this.hideQuickPreview());
+        }
+
+        if (this.quickPreviewOverlay) {
+            this.quickPreviewOverlay.addEventListener('click', () => this.hideQuickPreview());
+        }
 
         // Jigsaw Toolbar events
         this.ghostSlider.addEventListener('input', (e) => {
@@ -280,7 +364,6 @@ class App {
         document.getElementById('btn-undo').addEventListener('click', () => {
             if (this.activeGame && this.activeGame.undo) this.activeGame.undo();
         });
-        document.getElementById('btn-preview').addEventListener('click', () => this.showPreviewModal());
         document.getElementById('btn-image').addEventListener('click', () => this.showArtModal());
         document.getElementById('btn-levels-modal').addEventListener('click', () => this.showLevelModal());
 
@@ -356,10 +439,139 @@ class App {
 
     setupTheme() {
         this.theme = localStorage.getItem('pazzle_theme') || 'light';
+        this.applyTheme();
+    }
+
+    applyTheme() {
         document.documentElement.setAttribute('data-theme', this.theme);
-        if (this.themeSelect) {
-            this.themeSelect.value = this.theme;
+        if (this.themeIcon) {
+            this.themeIcon.className = (this.theme === 'dark') ? 'ph-bold ph-moon' : 'ph-bold ph-sun';
         }
+        if (this.activeGame && this.activeGame.render) {
+            this.activeGame.render();
+        }
+    }
+
+    toggleTheme() {
+        this.theme = (this.theme === 'light') ? 'dark' : 'light';
+        localStorage.setItem('pazzle_theme', this.theme);
+        this.applyTheme();
+    }
+
+    showQuickPreview() {
+        if (!this.currentImageUrl) return;
+        if (this.quickPreviewImg) this.quickPreviewImg.src = this.currentImageUrl;
+        if (this.quickPreviewOverlay) this.quickPreviewOverlay.classList.add('active');
+    }
+
+    hideQuickPreview() {
+        if (this.quickPreviewOverlay) this.quickPreviewOverlay.classList.remove('active');
+    }
+
+    showShortcutsModal() {
+        if (this.shortcutsModal) {
+            this.shortcutsModal.classList.add('active');
+        }
+    }
+
+    closeAllModals() {
+        document.querySelectorAll('.modal-overlay.active').forEach(modal => {
+            modal.classList.remove('active');
+        });
+        if (this.autoAdvanceTimer) {
+            clearInterval(this.autoAdvanceTimer);
+            this.autoAdvanceTimer = null;
+        }
+    }
+
+    setupKeyboardShortcuts() {
+        window.addEventListener('keydown', (e) => {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') return;
+
+            const key = e.key.toLowerCase();
+            if (key === 'h') {
+                if (this.activeGame && this.activeGame.hint) this.activeGame.hint();
+            } else if (key === 'r') {
+                this.startCurrentModeGame();
+            } else if (key === 'm') {
+                this.btnMusic.click();
+            } else if (key === 's') {
+                this.btnSound.click();
+            } else if (key === 'f') {
+                this.toggleFullscreen();
+            } else if (key === ' ' || key === 'p') {
+                if (!e.repeat) {
+                    this.showQuickPreview();
+                }
+            } else if (key === '1') {
+                this.switchMode('jigsaw');
+            } else if (key === '2') {
+                this.switchMode('campaign');
+            } else if (key === '3') {
+                this.switchMode('sliding');
+            } else if (key === '4') {
+                this.switchMode('swap');
+            } else if (key === '?' || key === '/') {
+                this.showShortcutsModal();
+            } else if (key === 'escape') {
+                this.closeAllModals();
+                this.hideQuickPreview();
+                if (this.activeGame && this.activeGame.deselectPiece) {
+                    this.activeGame.deselectPiece();
+                }
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            const key = e.key.toLowerCase();
+            if (key === ' ' || key === 'p') {
+                this.hideQuickPreview();
+            }
+        });
+    }
+
+    calculateStars(mode, size, moves, time) {
+        const totalTiles = size * size;
+        let targetMoves3, targetMoves2, targetTime3, targetTime2;
+
+        if (mode === 'jigsaw') {
+            targetMoves3 = Math.round(totalTiles * 1.5);
+            targetMoves2 = Math.round(totalTiles * 2.5);
+            targetTime3 = Math.round(totalTiles * 5.5) + 15;
+            targetTime2 = Math.round(totalTiles * 10) + 30;
+        } else if (mode === 'sliding') {
+            targetMoves3 = Math.round(totalTiles * 3.5);
+            targetMoves2 = Math.round(totalTiles * 7.0);
+            targetTime3 = Math.round(totalTiles * 8.0) + 20;
+            targetTime2 = Math.round(totalTiles * 16.0) + 40;
+        } else { // swap
+            targetMoves3 = Math.round(totalTiles * 1.2);
+            targetMoves2 = Math.round(totalTiles * 2.2);
+            targetTime3 = Math.round(totalTiles * 4.5) + 10;
+            targetTime2 = Math.round(totalTiles * 8.0) + 20;
+        }
+
+        if (moves <= targetMoves3 && time <= targetTime3) return 3;
+        if (moves <= targetMoves2 && time <= targetTime2) return 2;
+        return 1;
+    }
+
+    updateStarTargetBadge(mode, size) {
+        if (!this.hudStarTarget) return;
+        const totalTiles = size * size;
+        let m3, t3;
+        if (mode === 'jigsaw') {
+            m3 = Math.round(totalTiles * 1.5);
+            t3 = Math.round(totalTiles * 5.5) + 15;
+        } else if (mode === 'sliding') {
+            m3 = Math.round(totalTiles * 3.5);
+            t3 = Math.round(totalTiles * 8.0) + 20;
+        } else {
+            m3 = Math.round(totalTiles * 1.2);
+            t3 = Math.round(totalTiles * 4.5) + 10;
+        }
+        const text = this.t('star_target_tip').replace('{m}', m3).replace('{t}', t3);
+        this.hudStarTarget.textContent = text;
     }
 
     switchMode(mode) {
@@ -376,7 +588,7 @@ class App {
         document.getElementById('btn-levels-modal').style.display = (mode === 'campaign') ? 'inline-flex' : 'none';
         document.getElementById('btn-undo').style.display = (mode === 'sliding') ? 'inline-flex' : 'none';
         document.getElementById('btn-numbers').style.display = (mode === 'sliding' || mode === 'swap') ? 'inline-flex' : 'none';
-        this.hudStarsGroup.style.display = (mode === 'campaign') ? 'flex' : 'none';
+        this.hudStarsGroup.style.display = 'flex';
 
         if (mode === 'jigsaw') {
             this.startJigsawLevel(this.jigsawLevel);
@@ -416,6 +628,8 @@ class App {
         this.currentSize = cfg.size;
         this.sizeSelect.value = cfg.size.toString();
         this.updateHUDLevelTitle();
+        this.updateStarTargetBadge('jigsaw', cfg.size);
+        this.updateHUDStars(0);
 
         let imgUrl = null;
         if (this.currentArtId === 'custom' && this.currentImageUrl) {
@@ -425,6 +639,8 @@ class App {
             imgUrl = await window.artPresets.getImage(cfg.art);
             this.currentImageUrl = imgUrl;
         }
+
+        if (this.boardPreviewImg) this.boardPreviewImg.src = imgUrl || '';
 
         if (this.activeGame && this.activeGame.destroy) {
             this.activeGame.destroy();
@@ -437,6 +653,11 @@ class App {
         const onProgress = (prog) => this.updateProgress(prog);
 
         this.activeGame = new JigsawGame(this.boardContainer, onWin, onMove, onProgress);
+        this.activeGame.onPieceSelected = (piece) => {
+            if (this.tapPlaceBanner) {
+                this.tapPlaceBanner.classList.toggle('active', !!piece);
+            }
+        };
         this.activeGame.init(this.currentSize, imgUrl, false);
         this.btnEdgeFilter.classList.remove('active');
     }
@@ -453,12 +674,15 @@ class App {
         this.currentSize = size;
         this.sizeSelect.value = size.toString();
         this.updateHUDLevelTitle();
+        this.updateStarTargetBadge('sliding', size);
+        this.updateHUDStars(0);
 
         let imgUrl = null;
         if (art !== 'numbers') {
             imgUrl = await window.artPresets.getImage(art);
         }
         this.currentImageUrl = imgUrl;
+        if (this.boardPreviewImg) this.boardPreviewImg.src = imgUrl || '';
 
         if (this.activeGame && this.activeGame.destroy) {
             this.activeGame.destroy();
@@ -485,9 +709,12 @@ class App {
         this.currentSize = size;
         this.sizeSelect.value = size.toString();
         this.updateHUDLevelTitle();
+        this.updateStarTargetBadge('swap', size);
+        this.updateHUDStars(0);
 
         const imgUrl = await window.artPresets.getImage(art);
         this.currentImageUrl = imgUrl;
+        if (this.boardPreviewImg) this.boardPreviewImg.src = imgUrl || '';
 
         if (this.activeGame && this.activeGame.destroy) {
             this.activeGame.destroy();
@@ -508,12 +735,14 @@ class App {
 
         this.currentCampaignLevel = levelId;
         this.updateHUDLevelTitle();
+        this.updateStarTargetBadge(lvl.mode, lvl.size);
 
         let imgUrl = null;
         if (lvl.art !== 'numbers') {
             imgUrl = await window.artPresets.getImage(lvl.art);
         }
         this.currentImageUrl = imgUrl;
+        if (this.boardPreviewImg) this.boardPreviewImg.src = imgUrl || '';
 
         if (this.activeGame && this.activeGame.destroy) {
             this.activeGame.destroy();
@@ -531,6 +760,11 @@ class App {
 
         if (lvl.mode === 'jigsaw') {
             this.activeGame = new JigsawGame(this.boardContainer, onWin, onMove, onProgress);
+            this.activeGame.onPieceSelected = (piece) => {
+                if (this.tapPlaceBanner) {
+                    this.tapPlaceBanner.classList.toggle('active', !!piece);
+                }
+            };
             this.activeGame.init(lvl.size, imgUrl, false);
             this.btnEdgeFilter.classList.remove('active');
         } else if (lvl.mode === 'sliding') {
@@ -547,36 +781,39 @@ class App {
     // WIN HANDLERS WITH AUTOMATIC LEVEL ADVANCEMENT
     handleJigsawWin(res) {
         const nextLvl = this.jigsawLevel + 1;
+        const stars = this.calculateStars('jigsaw', this.currentSize, res.moves, res.time);
         this.showVictoryModalWithAutoAdvance({
             completedTitle: `${this.jigsawLevel}-Bosqich yakunlandi!`,
             nextLevelName: `${nextLvl}-Bosqichga oʻtish ➔`,
             moves: res.moves,
             time: res.time,
-            stars: 3,
+            stars: stars,
             onAdvance: () => this.startJigsawLevel(nextLvl)
         });
     }
 
     handleSlidingWin(res) {
         const nextLvl = this.slidingLevel + 1;
+        const stars = this.calculateStars('sliding', this.currentSize, res.moves, res.time);
         this.showVictoryModalWithAutoAdvance({
             completedTitle: `${this.slidingLevel}-Bosqich yakunlandi!`,
             nextLevelName: `${nextLvl}-Bosqichga oʻtish ➔`,
             moves: res.moves,
             time: res.time,
-            stars: 3,
+            stars: stars,
             onAdvance: () => this.startSlidingLevel(nextLvl)
         });
     }
 
     handleSwapWin(res) {
         const nextLvl = this.swapLevel + 1;
+        const stars = this.calculateStars('swap', this.currentSize, res.moves, res.time);
         this.showVictoryModalWithAutoAdvance({
             completedTitle: `${this.swapLevel}-Bosqich yakunlandi!`,
             nextLevelName: `${nextLvl}-Bosqichga oʻtish ➔`,
             moves: res.moves,
             time: res.time,
-            stars: 3,
+            stars: stars,
             onAdvance: () => this.startSwapLevel(nextLvl)
         });
     }

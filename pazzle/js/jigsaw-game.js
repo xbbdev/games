@@ -14,7 +14,10 @@ class JigsawGame {
         this.size = 4; // 3x3 to 10x10
         this.pieces = [];
         this.draggedPiece = null;
+        this.selectedPiece = null;
         this.dragOffset = { x: 0, y: 0 };
+        this.isTouchDrag = false;
+        this.onPieceSelected = null;
         this.moves = 0;
         this.startTime = null;
         this.timerInterval = null;
@@ -40,6 +43,9 @@ class JigsawGame {
         this.boundOnDown = null;
         this.boundOnMove = null;
         this.boundOnUp = null;
+        this.boundTouchStart = null;
+        this.boundTouchMove = null;
+        this.boundTouchEnd = null;
         this.boundWheel = null;
         this.boundResize = null;
 
@@ -120,37 +126,56 @@ class JigsawGame {
         const rect = this.container.getBoundingClientRect();
         const dpr = window.devicePixelRatio || 1;
         const w = rect.width || 600;
-        const h = rect.height || 640;
+        const h = rect.height || 500;
 
         this.canvas.width = w * dpr;
         this.canvas.height = h * dpr;
         this.canvas.style.width = `${w}px`;
         this.canvas.style.height = `${h}px`;
+        this.ctx.setTransform(1, 0, 0, 1, 0, 0);
         this.ctx.scale(dpr, dpr);
 
-        // Layout:
-        // Top 72% area for Puzzle Board
-        // Bottom 28% area for Dedicated Piece Tray (min 110px)
-        const trayH = Math.max(110, Math.min(140, h * 0.24));
-        const boardAreaH = h - trayH - 16;
-        const boardAreaW = w - 24;
+        const oldTileSize = this.boardBounds.tileSize;
 
-        const boardSize = Math.min(boardAreaW * 0.94, boardAreaH * 0.94, 520);
+        // Dedicated Piece Tray (proportional to container height)
+        const trayH = Math.max(88, Math.min(130, h * 0.22));
+        const boardAreaH = h - trayH - 12;
+        const boardAreaW = w - 16;
+
+        const boardSize = Math.max(180, Math.min(boardAreaW * 0.96, boardAreaH * 0.96, 520));
         this.boardBounds = {
             x: (w - boardSize) / 2,
-            y: 12 + (boardAreaH - boardSize) / 2,
+            y: 8 + (boardAreaH - boardSize) / 2,
             width: boardSize,
             height: boardSize,
             tileSize: boardSize / this.size
         };
 
         this.trayBounds = {
-            x: 10,
-            y: h - trayH - 6,
-            width: w - 20,
+            x: 8,
+            y: h - trayH - 4,
+            width: w - 16,
             height: trayH,
-            itemSize: trayH * 0.68
+            itemSize: Math.max(48, trayH * 0.65)
         };
+
+        const ts = this.boardBounds.tileSize;
+        // Update all existing pieces target positions
+        if (this.pieces && this.pieces.length > 0) {
+            this.pieces.forEach(p => {
+                p.targetX = this.boardBounds.x + p.col * ts;
+                p.targetY = this.boardBounds.y + p.row * ts;
+                if (p.state === 'locked') {
+                    p.x = p.targetX;
+                    p.y = p.targetY;
+                }
+            });
+
+            // If tile size changed significantly, regenerate piece canvases crisp!
+            if (this.image && Math.abs(oldTileSize - ts) > 1.5) {
+                this.renderPieceCanvases();
+            }
+        }
 
         this.updateTrayScrollBounds();
     }
@@ -170,66 +195,75 @@ class JigsawGame {
         }
     }
 
+    renderPieceCanvases() {
+        if (!this.image || !this.pieces) return;
+        const ts = this.boardBounds.tileSize;
+        const tabSize = ts * 0.22;
+        const pad = tabSize * 2.2;
+        const pieceW = ts + pad * 2;
+        const pieceH = ts + pad * 2;
+
+        this.pieces.forEach(p => {
+            const pieceCanvas = document.createElement('canvas');
+            pieceCanvas.width = pieceW;
+            pieceCanvas.height = pieceH;
+            const pCtx = pieceCanvas.getContext('2d');
+
+            // Draw clipped image
+            pCtx.save();
+            pCtx.translate(pad, pad);
+            this.tracePiecePath(pCtx, 0, 0, ts, p.edges);
+            pCtx.clip();
+
+            const imgTileW = this.image.width / this.size;
+            const imgTileH = this.image.height / this.size;
+            const imgPadX = (imgTileW / ts) * pad;
+            const imgPadY = (imgTileH / ts) * pad;
+
+            pCtx.drawImage(
+                this.image,
+                p.col * imgTileW - imgPadX,
+                p.row * imgTileH - imgPadY,
+                imgTileW + imgPadX * 2,
+                imgTileH + imgPadY * 2,
+                -pad,
+                -pad,
+                pieceW,
+                pieceH
+            );
+            pCtx.restore();
+
+            // 3D Bevel highlight & shadow stroke
+            pCtx.save();
+            pCtx.translate(pad, pad);
+            this.tracePiecePath(pCtx, 0, 0, ts, p.edges);
+            pCtx.strokeStyle = 'rgba(255, 255, 255, 0.55)';
+            pCtx.lineWidth = 2.5;
+            pCtx.stroke();
+
+            pCtx.strokeStyle = 'rgba(0, 0, 0, 0.45)';
+            pCtx.lineWidth = 1.2;
+            pCtx.stroke();
+            pCtx.restore();
+
+            p.canvas = pieceCanvas;
+            p.pad = pad;
+            p.width = pieceW;
+            p.height = pieceH;
+        });
+    }
+
     generatePuzzlePieces() {
         this.generateEdges();
         this.pieces = [];
         const ts = this.boardBounds.tileSize;
-        const tabSize = ts * 0.22;
 
         for (let r = 0; r < this.size; r++) {
             for (let c = 0; c < this.size; c++) {
                 const targetX = this.boardBounds.x + c * ts;
                 const targetY = this.boardBounds.y + r * ts;
                 const edges = this.tabEdges[r][c];
-
-                // Check if this is an outer border edge piece
                 const isEdge = (edges.top === 0 || edges.right === 0 || edges.bottom === 0 || edges.left === 0);
-
-                const pieceCanvas = document.createElement('canvas');
-                const pad = tabSize * 2.2;
-                const pieceW = ts + pad * 2;
-                const pieceH = ts + pad * 2;
-                pieceCanvas.width = pieceW;
-                pieceCanvas.height = pieceH;
-                const pCtx = pieceCanvas.getContext('2d');
-
-                // Draw clipped image
-                pCtx.save();
-                pCtx.translate(pad, pad);
-                this.tracePiecePath(pCtx, 0, 0, ts, edges);
-                pCtx.clip();
-
-                const imgTileW = this.image.width / this.size;
-                const imgTileH = this.image.height / this.size;
-                const imgPadX = (imgTileW / ts) * pad;
-                const imgPadY = (imgTileH / ts) * pad;
-
-                pCtx.drawImage(
-                    this.image,
-                    c * imgTileW - imgPadX,
-                    r * imgTileH - imgPadY,
-                    imgTileW + imgPadX * 2,
-                    imgTileH + imgPadY * 2,
-                    -pad,
-                    -pad,
-                    pieceW,
-                    pieceH
-                );
-
-                pCtx.restore();
-
-                // 3D Bevel highlight & shadow stroke
-                pCtx.save();
-                pCtx.translate(pad, pad);
-                this.tracePiecePath(pCtx, 0, 0, ts, edges);
-                pCtx.strokeStyle = 'rgba(255, 255, 255, 0.55)';
-                pCtx.lineWidth = 2.5;
-                pCtx.stroke();
-
-                pCtx.strokeStyle = 'rgba(0, 0, 0, 0.45)';
-                pCtx.lineWidth = 1.2;
-                pCtx.stroke();
-                pCtx.restore();
 
                 this.pieces.push({
                     id: `${r}_${c}`,
@@ -237,22 +271,23 @@ class JigsawGame {
                     col: c,
                     edges,
                     isEdge,
-                    canvas: pieceCanvas,
-                    pad,
-                    width: pieceW,
-                    height: pieceH,
+                    canvas: null,
+                    pad: 0,
+                    width: ts,
+                    height: ts,
                     x: 0,
                     y: 0,
                     targetX,
                     targetY,
                     rotation: 0,
                     isLocked: false,
-                    state: 'tray', // 'tray', 'table', 'locked'
+                    state: 'tray',
                     trayIndex: r * this.size + c,
                     zIndex: 1
                 });
             }
         }
+        this.renderPieceCanvases();
     }
 
     tracePiecePath(ctx, x, y, size, edges) {
@@ -424,6 +459,18 @@ class JigsawGame {
             this.ctx.lineTo(bb.x + bb.width, bb.y + i * bb.tileSize);
             this.ctx.stroke();
         }
+
+        // Highlight slot for selected piece
+        if (this.selectedPiece) {
+            this.ctx.save();
+            this.ctx.strokeStyle = isDark ? '#60a5fa' : '#2563eb';
+            this.ctx.lineWidth = 2.5;
+            this.ctx.setLineDash([5, 4]);
+            this.ctx.strokeRect(this.selectedPiece.targetX, this.selectedPiece.targetY, bb.tileSize, bb.tileSize);
+            this.ctx.fillStyle = isDark ? 'rgba(96, 165, 250, 0.16)' : 'rgba(37, 99, 235, 0.14)';
+            this.ctx.fillRect(this.selectedPiece.targetX, this.selectedPiece.targetY, bb.tileSize, bb.tileSize);
+            this.ctx.restore();
+        }
         this.ctx.restore();
 
         // 2. PIECE TRAY (SOLID FLAT COLOR, NO GRADIENTS)
@@ -523,6 +570,14 @@ class JigsawGame {
         }
 
         this.ctx.drawImage(p.canvas, -p.pad, -p.pad);
+
+        // Highlight stroke if piece is currently selected (Tap-to-select mode)
+        if (p === this.selectedPiece) {
+            this.ctx.strokeStyle = isDark ? '#60a5fa' : '#2563eb';
+            this.ctx.lineWidth = 3;
+            this.ctx.strokeRect(0, 0, ts, ts);
+        }
+
         this.ctx.restore();
     }
 
@@ -538,6 +593,57 @@ class JigsawGame {
         ctx.lineTo(x, y + radius);
         ctx.quadraticCurveTo(x, y, x + radius, y);
         ctx.closePath();
+    }
+
+    triggerHaptic(type = 'snap') {
+        if (typeof navigator !== 'undefined' && navigator.vibrate) {
+            try {
+                if (type === 'snap') navigator.vibrate(25);
+                else if (type === 'drop') navigator.vibrate(12);
+                else if (type === 'select') navigator.vibrate(15);
+                else if (type === 'error') navigator.vibrate([15, 30, 15]);
+            } catch (e) {}
+        }
+    }
+
+    selectPiece(p) {
+        if (this.selectedPiece === p) {
+            this.selectedPiece = null;
+        } else {
+            this.selectedPiece = p;
+            this.triggerHaptic('select');
+            window.soundEngine.playClick();
+        }
+        if (this.onPieceSelected) {
+            this.onPieceSelected(this.selectedPiece);
+        }
+        this.render();
+    }
+
+    deselectPiece() {
+        if (this.selectedPiece) {
+            this.selectedPiece = null;
+            if (this.onPieceSelected) {
+                this.onPieceSelected(null);
+            }
+            this.render();
+        }
+    }
+
+    pickUpPiece(p, pos, isTouch = false) {
+        this.draggedPiece = p;
+        this.selectedPiece = null;
+        if (this.onPieceSelected) this.onPieceSelected(null);
+        this.isTouchDrag = isTouch;
+
+        // Lift piece 38px above finger on touch to avoid thumb obscuring the piece!
+        const liftOffset = isTouch ? Math.min(38, this.boardBounds.tileSize * 0.45) : 0;
+        this.dragOffset.x = pos.x - p.x;
+        this.dragOffset.y = pos.y - p.y + liftOffset;
+        this.canvas.style.cursor = 'grabbing';
+        this.triggerHaptic('select');
+        window.soundEngine.playClick();
+        this.render();
     }
 
     setupEvents() {
@@ -560,32 +666,69 @@ class JigsawGame {
             };
         };
 
+        // --- MOUSE EVENTS ---
         this.boundOnDown = (e) => {
             const pos = getPos(e);
             const ts = this.boardBounds.tileSize;
             const tb = this.trayBounds;
+            const bb = this.boardBounds;
 
-            // 1. Check if clicking unplaced table pieces first (highest z-order)
+            // 1. Click on unplaced table piece
             const tablePieces = this.pieces.filter(p => p.state === 'table');
             for (let i = tablePieces.length - 1; i >= 0; i--) {
                 const p = tablePieces[i];
                 if (pos.x >= p.x && pos.x <= p.x + ts && pos.y >= p.y && pos.y <= p.y + ts) {
-                    this.pickUpPiece(p, pos);
+                    this.pickUpPiece(p, pos, false);
                     return;
                 }
             }
 
-            // 2. Check if clicking a piece inside the tray
+            // 2. Click on tray piece
             if (pos.y >= tb.y && pos.y <= tb.y + tb.height) {
                 const trayPieces = this.getTrayPieces();
                 for (let i = trayPieces.length - 1; i >= 0; i--) {
                     const p = trayPieces[i];
                     if (pos.x >= p.x && pos.x <= p.x + ts && pos.y >= p.y && pos.y <= p.y + ts) {
-                        this.pickUpPiece(p, pos);
+                        this.pickUpPiece(p, pos, false);
                         p.state = 'table';
                         this.updateTrayPositions();
                         return;
                     }
+                }
+            }
+
+            // 3. If a piece was selected, check if clicking board to place it!
+            if (this.selectedPiece) {
+                const sp = this.selectedPiece;
+                const dist = Math.hypot(pos.x - (sp.targetX + ts / 2), pos.y - (sp.targetY + ts / 2));
+                if (dist < ts * 0.85 && sp.rotation % 360 === 0) {
+                    sp.x = sp.targetX;
+                    sp.y = sp.targetY;
+                    sp.state = 'locked';
+                    sp.isLocked = true;
+                    this.moves++;
+                    this.triggerHaptic('snap');
+                    window.soundEngine.playSnap();
+                    this.spawnSnapSparkles(sp.targetX + ts / 2, sp.targetY + ts / 2);
+                    this.deselectPiece();
+                    this.updateTrayPositions();
+                    this.notifyProgress();
+                    this.checkVictory();
+                    this.render();
+                    return;
+                } else if (pos.x >= bb.x - 20 && pos.x <= bb.x + bb.width + 20 && pos.y >= bb.y - 20 && pos.y <= bb.y + bb.height + 20) {
+                    sp.state = 'table';
+                    sp.x = pos.x - ts / 2;
+                    sp.y = pos.y - ts / 2;
+                    this.moves++;
+                    this.triggerHaptic('drop');
+                    window.soundEngine.playSlide();
+                    this.deselectPiece();
+                    this.updateTrayPositions();
+                    this.render();
+                    return;
+                } else {
+                    this.deselectPiece();
                 }
             }
         };
@@ -610,7 +753,7 @@ class JigsawGame {
 
             // Magnetic snap check
             const dist = Math.hypot(p.x - p.targetX, p.y - p.targetY);
-            const snapThreshold = ts * 0.42;
+            const snapThreshold = ts * 0.44;
 
             if (dist < snapThreshold && p.rotation % 360 === 0) {
                 // MAGNETIC SNAP SUCCESS!
@@ -618,24 +761,174 @@ class JigsawGame {
                 p.y = p.targetY;
                 p.state = 'locked';
                 p.isLocked = true;
+                this.triggerHaptic('snap');
                 window.soundEngine.playSnap();
-
-                // Spawn victory sparkle burst at snap point
                 this.spawnSnapSparkles(p.targetX + ts / 2, p.targetY + ts / 2);
                 this.notifyProgress();
                 this.checkVictory();
             } else if (p.y + ts * 0.5 > tb.y) {
-                // Dropped back into the tray area!
+                // Dropped back into tray
                 p.state = 'tray';
+                this.triggerHaptic('drop');
                 window.soundEngine.playClick();
                 this.updateTrayPositions();
             } else {
                 // Dropped onto table area
                 p.state = 'table';
+                this.triggerHaptic('drop');
                 window.soundEngine.playSlide();
             }
 
             this.render();
+        };
+
+        // --- TOUCH EVENTS (SWIPE, LIFT OFFSET, TAP-TO-PLACE) ---
+        let touchStartPos = { x: 0, y: 0 };
+        let touchStartScrollX = 0;
+        let isTraySwiping = false;
+        let pendingPiece = null;
+
+        this.boundTouchStart = (e) => {
+            if (e.cancelable) e.preventDefault();
+            const pos = getPos(e);
+            touchStartPos = { x: pos.x, y: pos.y };
+            touchStartScrollX = this.trayScrollX;
+            isTraySwiping = false;
+            pendingPiece = null;
+
+            const tb = this.trayBounds;
+            const ts = this.boardBounds.tileSize;
+            const bb = this.boardBounds;
+
+            // 1. Touch inside tray
+            if (pos.y >= tb.y && pos.y <= tb.y + tb.height) {
+                const trayPieces = this.getTrayPieces();
+                for (let i = trayPieces.length - 1; i >= 0; i--) {
+                    const p = trayPieces[i];
+                    if (pos.x >= p.x && pos.x <= p.x + ts && pos.y >= p.y && pos.y <= p.y + ts) {
+                        pendingPiece = p;
+                        break;
+                    }
+                }
+                return;
+            }
+
+            // 2. Touch on table piece
+            const tablePieces = this.pieces.filter(p => p.state === 'table');
+            for (let i = tablePieces.length - 1; i >= 0; i--) {
+                const p = tablePieces[i];
+                if (pos.x >= p.x && pos.x <= p.x + ts && pos.y >= p.y && pos.y <= p.y + ts) {
+                    this.pickUpPiece(p, pos, true);
+                    return;
+                }
+            }
+
+            // 3. Touch on board when a piece is selected (Tap to place)
+            if (this.selectedPiece) {
+                const sp = this.selectedPiece;
+                const dist = Math.hypot(pos.x - (sp.targetX + ts / 2), pos.y - (sp.targetY + ts / 2));
+                if (dist < ts * 0.9 && sp.rotation % 360 === 0) {
+                    sp.x = sp.targetX;
+                    sp.y = sp.targetY;
+                    sp.state = 'locked';
+                    sp.isLocked = true;
+                    this.moves++;
+                    this.triggerHaptic('snap');
+                    window.soundEngine.playSnap();
+                    this.spawnSnapSparkles(sp.targetX + ts / 2, sp.targetY + ts / 2);
+                    this.deselectPiece();
+                    this.updateTrayPositions();
+                    this.notifyProgress();
+                    this.checkVictory();
+                    this.render();
+                    return;
+                } else if (pos.x >= bb.x - 20 && pos.x <= bb.x + bb.width + 20 && pos.y >= bb.y - 20 && pos.y <= bb.y + bb.height + 20) {
+                    sp.state = 'table';
+                    sp.x = pos.x - ts / 2;
+                    sp.y = pos.y - ts / 2;
+                    this.moves++;
+                    this.triggerHaptic('drop');
+                    window.soundEngine.playSlide();
+                    this.deselectPiece();
+                    this.updateTrayPositions();
+                    this.render();
+                    return;
+                } else {
+                    this.deselectPiece();
+                }
+            }
+        };
+
+        this.boundTouchMove = (e) => {
+            if (e.cancelable) e.preventDefault();
+            const pos = getPos(e);
+
+            if (this.draggedPiece) {
+                this.draggedPiece.x = pos.x - this.dragOffset.x;
+                this.draggedPiece.y = pos.y - this.dragOffset.y;
+                this.render();
+                return;
+            }
+
+            const dx = pos.x - touchStartPos.x;
+            const dy = pos.y - touchStartPos.y;
+
+            // Tray horizontal swipe gesture
+            if (!isTraySwiping && Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy)) {
+                isTraySwiping = true;
+                pendingPiece = null;
+            }
+
+            if (isTraySwiping) {
+                this.trayScrollX = Math.max(0, Math.min(touchStartScrollX - dx, this.maxTrayScrollX));
+                this.updateTrayPositions();
+                this.render();
+                return;
+            }
+
+            // Pulling a piece UP out of the tray into the board!
+            if (pendingPiece && dy < -16) {
+                const p = pendingPiece;
+                pendingPiece = null;
+                p.state = 'table';
+                this.pickUpPiece(p, pos, true);
+                this.updateTrayPositions();
+            }
+        };
+
+        this.boundTouchEnd = (e) => {
+            if (this.draggedPiece) {
+                this.boundOnUp();
+                return;
+            }
+
+            if (isTraySwiping) {
+                isTraySwiping = false;
+                return;
+            }
+
+            const pos = getPos(e);
+            const distMoved = Math.hypot(pos.x - touchStartPos.x, pos.y - touchStartPos.y);
+
+            // Quick Tap on tray piece -> Select it!
+            if (pendingPiece && distMoved < 12) {
+                this.selectPiece(pendingPiece);
+                pendingPiece = null;
+                return;
+            }
+
+            // Quick tap on table piece -> Select it!
+            if (distMoved < 12) {
+                const ts = this.boardBounds.tileSize;
+                const tablePieces = this.pieces.filter(p => p.state === 'table');
+                for (let i = tablePieces.length - 1; i >= 0; i--) {
+                    const p = tablePieces[i];
+                    if (pos.x >= p.x && pos.x <= p.x + ts && pos.y >= p.y && pos.y <= p.y + ts) {
+                        this.selectPiece(p);
+                        return;
+                    }
+                }
+            }
         };
 
         // Tray mouse wheel horizontal scroll
@@ -669,9 +962,9 @@ class JigsawGame {
         window.addEventListener('mouseup', this.boundOnUp);
         this.canvas.addEventListener('wheel', this.boundWheel, { passive: false });
 
-        this.canvas.addEventListener('touchstart', this.boundOnDown, { passive: false });
-        window.addEventListener('touchmove', this.boundOnMove, { passive: false });
-        window.addEventListener('touchend', this.boundOnUp);
+        this.canvas.addEventListener('touchstart', this.boundTouchStart, { passive: false });
+        window.addEventListener('touchmove', this.boundTouchMove, { passive: false });
+        window.addEventListener('touchend', this.boundTouchEnd);
 
         this.boundResize = () => {
             this.resize();
@@ -679,15 +972,6 @@ class JigsawGame {
             this.render();
         };
         window.addEventListener('resize', this.boundResize);
-    }
-
-    pickUpPiece(p, pos) {
-        this.draggedPiece = p;
-        this.dragOffset.x = pos.x - p.x;
-        this.dragOffset.y = pos.y - p.y;
-        this.canvas.style.cursor = 'grabbing';
-        window.soundEngine.playClick();
-        this.render();
     }
 
     spawnSnapSparkles(x, y) {
@@ -727,15 +1011,6 @@ class JigsawGame {
             this.ctx.globalAlpha = Math.max(0, s.alpha);
             this.ctx.fillStyle = s.color;
             this.ctx.beginPath();
-            this.ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
-            this.ctx.fill();
-            this.ctx.restore();
-        }
-
-        if (this.sparkles.length > 0) {
-            requestAnimationFrame(() => this.render());
-        }
-    }
             this.ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
             this.ctx.fill();
             this.ctx.restore();
@@ -893,16 +1168,18 @@ class JigsawGame {
     destroy() {
         this.isDestroyed = true;
         this.stopTimer();
-        if (this.boundOnDown && this.canvas) {
-            this.canvas.removeEventListener('mousedown', this.boundOnDown);
-            this.canvas.removeEventListener('touchstart', this.boundOnDown);
-            this.canvas.removeEventListener('wheel', this.boundWheel);
+        if (this.canvas) {
+            if (this.boundOnDown) this.canvas.removeEventListener('mousedown', this.boundOnDown);
+            if (this.boundTouchStart) this.canvas.removeEventListener('touchstart', this.boundTouchStart);
+            if (this.boundWheel) this.canvas.removeEventListener('wheel', this.boundWheel);
         }
         if (this.boundOnMove) {
             window.removeEventListener('mousemove', this.boundOnMove);
             window.removeEventListener('mouseup', this.boundOnUp);
-            window.removeEventListener('touchmove', this.boundOnMove);
-            window.removeEventListener('touchend', this.boundOnUp);
+        }
+        if (this.boundTouchMove) {
+            window.removeEventListener('touchmove', this.boundTouchMove);
+            window.removeEventListener('touchend', this.boundTouchEnd);
         }
         if (this.boundResize) {
             window.removeEventListener('resize', this.boundResize);

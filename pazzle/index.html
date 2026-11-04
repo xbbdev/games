@@ -26,29 +26,31 @@
 
             <div class="nav-actions">
                 <!-- Sound Effects Toggle -->
-                <button id="btn-sound" class="icon-btn active" title="Ovoz (FX)" aria-label="Toggle Sound">
+                <button id="btn-sound" class="icon-btn active" title="Ovoz (FX) [S]" aria-label="Toggle Sound">
                     <i class="ph-bold ph-speaker-high"></i>
                 </button>
                 <!-- Generative Ambient Zen Music Toggle -->
-                <button id="btn-music" class="icon-btn" title="Tinchlantiruvchi musiqa" aria-label="Toggle Music">
+                <button id="btn-music" class="icon-btn" title="Tinchlantiruvchi musiqa [M]" aria-label="Toggle Music">
                     <i class="ph-bold ph-music-note"></i>
                 </button>
                 <!-- Fullscreen Toggle -->
-                <button id="btn-fullscreen" class="icon-btn" title="To'liq ekran" aria-label="Toggle Fullscreen">
+                <button id="btn-fullscreen" class="icon-btn" title="To'liq ekran [F]" aria-label="Toggle Fullscreen">
                     <i class="ph-bold ph-arrows-out"></i>
                 </button>
-
-                <!-- Theme Switcher (Oq / Qora rejim) -->
-                <select id="theme-select" class="select-dropdown" title="Rejim (Oq / Qora)">
-                    <option value="light" selected>☀️ Oq rejim</option>
-                    <option value="dark">🌙 Qora rejim</option>
-                </select>
+                <!-- Keyboard Shortcuts Info Button -->
+                <button id="btn-shortcuts" class="icon-btn" title="Klaviatura yorliqlari [?]" aria-label="Keyboard Shortcuts">
+                    <i class="ph-bold ph-keyboard"></i>
+                </button>
+                <!-- One-click Theme Switcher (Oq / Qora rejim) -->
+                <button id="btn-theme" class="icon-btn" title="Rejim (Oq / Qora)" aria-label="Toggle Theme">
+                    <i id="theme-icon" class="ph-bold ph-sun"></i>
+                </button>
 
                 <!-- Language Switcher -->
-                <select id="lang-select" class="select-dropdown" title="Til">
-                    <option value="uz" selected>🇺🇿 O'zbekcha</option>
-                    <option value="en">🇬🇧 English</option>
-                    <option value="ru">🇷🇺 Русский</option>
+                <select id="lang-select" class="select-dropdown compact-lang-select" title="Til">
+                    <option value="uz" selected>UZ</option>
+                    <option value="en">EN</option>
+                    <option value="ru">RU</option>
                 </select>
             </div>
         </header>
@@ -110,9 +112,12 @@
                     </div>
                 </div>
 
-                <div class="hud-item" id="hud-stars-group" style="display: none;">
+                <div class="hud-item" id="hud-stars-group">
                     <div class="hud-meta">
-                        <span class="hud-label" data-i18n="hud_stars">Yulduzlar</span>
+                        <div class="hud-stars-header">
+                            <span class="hud-label" data-i18n="hud_stars">Yulduzlar</span>
+                            <span id="hud-star-target" class="star-target-badge" title="3★ talabi">🎯 3★: 25 qadam</span>
+                        </div>
                         <div id="hud-stars" class="hud-stars">
                             <i class="ph-fill ph-star star-filled"></i>
                             <i class="ph-fill ph-star star-filled"></i>
@@ -150,26 +155,50 @@
         <!-- MAIN GAME BOARD CONTAINER -->
         <main class="game-layout">
             <div id="board-container" class="board-container">
-                <!-- Injected via JavaScript dynamically -->
+                <!-- Floating Mini Reference Card (Asl rasm kichik namunasi) -->
+                <div id="board-preview-card" class="board-preview-card" title="Asl rasmni ko'rish (Bosib turing yoki bosing)">
+                    <img id="board-preview-img" alt="Ref" src="">
+                    <span class="preview-card-hint"><i class="ph-bold ph-eye"></i></span>
+                </div>
+
+                <!-- Instant Quick Peek Full Overlay (Hold to Preview) -->
+                <div id="quick-preview-overlay" class="quick-preview-overlay">
+                    <img id="quick-preview-img" alt="Asl rasm">
+                    <div class="quick-preview-caption">
+                        <i class="ph-bold ph-image"></i>
+                        <span data-i18n="quick_preview_hint">Qoʻyib yuboring (Yashirish uchun)</span>
+                    </div>
+                </div>
+
+                <!-- Tap-to-Place Guide Banner (Bo'lak tanlanganda yordam) -->
+                <div id="tap-place-banner" class="tap-place-banner">
+                    <i class="ph-bold ph-cursor-click"></i>
+                    <span data-i18n="tap_place_hint">Boʻlak tanlandi! Doskadagi kerakli katakni bosing</span>
+                </div>
+                <!-- Canvas or tiles injected via JavaScript dynamically -->
             </div>
 
             <!-- CONTROLS ACTION BAR -->
             <div class="controls-bar">
-                <button id="btn-restart" class="btn btn-secondary" title="Qayta boshlash">
+                <button id="btn-hint" class="btn btn-gold" title="Aqlli maslahat [H]">
+                    <i class="ph-bold ph-lightbulb"></i>
+                    <span data-i18n="btn_hint">Maslahat</span>
+                </button>
+                <button id="btn-preview" class="btn btn-secondary" title="Asl rasm (Bosib turing / Space / P)">
+                    <i class="ph-bold ph-image"></i>
+                    <span data-i18n="btn_preview">Asl rasm</span>
+                </button>
+                <button id="btn-restart" class="btn btn-secondary" title="Qayta boshlash [R]">
                     <i class="ph-bold ph-arrows-counter-clockwise"></i>
                     <span data-i18n="btn_restart">Qayta boshlash</span>
                 </button>
-                <button id="btn-hint" class="btn btn-gold" title="Aqlli maslahat">
-                    <i class="ph-bold ph-lightbulb"></i>
-                    <span data-i18n="btn_hint">Maslahat</span>
+                <button id="btn-image" class="btn btn-secondary" title="Rasm tanlash">
+                    <i class="ph-bold ph-image-square"></i>
+                    <span data-i18n="btn_image">Rasm tanlash</span>
                 </button>
                 <button id="btn-solve" class="btn btn-primary" title="AI avtomatik yechish">
                     <i class="ph-bold ph-robot"></i>
                     <span data-i18n="btn_solve">Avto-yechish</span>
-                </button>
-                <button id="btn-preview" class="btn btn-secondary" title="Asl rasmni ko'rish">
-                    <i class="ph-bold ph-image"></i>
-                    <span data-i18n="btn_preview">Asl rasm</span>
                 </button>
                 <button id="btn-numbers" class="btn btn-secondary" title="Raqamlarni ko'rsatish/yashirish" style="display: none;">
                     <i class="ph-bold ph-hash"></i>
@@ -179,10 +208,6 @@
                     <i class="ph-bold ph-arrow-u-up-left"></i>
                     <span data-i18n="btn_undo">Qaytish</span>
                 </button>
-                <button id="btn-image" class="btn btn-secondary" title="Rasm yoki fonni tanlash">
-                    <i class="ph-bold ph-image-square"></i>
-                    <span data-i18n="btn_image">Rasm tanlash</span>
-                </button>
                 <button id="btn-levels-modal" class="btn btn-accent" title="Bosqichlar xaritasi" style="display: none;">
                     <i class="ph-bold ph-trophy"></i>
                     <span data-i18n="btn_levels">Bosqichlar</span>
@@ -190,12 +215,12 @@
 
                 <!-- Free Play Size Selector (2x2 to 8x8) -->
                 <select id="size-select" class="select-dropdown" title="O'lcham">
-                    <option value="2">2x2 (Bolalar uchun - 4 bo'lak)</option>
-                    <option value="3">3x3 (Oson - 9 bo'lak)</option>
-                    <option value="4" selected>4x4 (Klassik - 16 bo'lak)</option>
-                    <option value="5">5x5 (Qiyin - 25 bo'lak)</option>
-                    <option value="6">6x6 (Grossmeyster - 36 bo'lak)</option>
-                    <option value="8">8x8 (Ekstremal Daho - 64 bo'lak)</option>
+                    <option value="2">2x2 (4 bo'lak)</option>
+                    <option value="3">3x3 (9 bo'lak)</option>
+                    <option value="4" selected>4x4 (16 bo'lak)</option>
+                    <option value="5">5x5 (25 bo'lak)</option>
+                    <option value="6">6x6 (36 bo'lak)</option>
+                    <option value="8">8x8 (64 bo'lak)</option>
                 </select>
             </div>
         </main>
@@ -301,7 +326,56 @@
                 <img id="preview-image-large" alt="Original Art Preview" style="max-width: 100%; border-radius: var(--radius-md); box-shadow: 0 8px 24px rgba(0,0,0,0.5);">
             </div>
             <div class="modal-footer">
-                <button class="btn btn-secondary modal-close-btn">Yopish</button>
+                <button class="btn btn-secondary modal-close-btn" data-i18n="btn_close">Yopish</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 5. KEYBOARD SHORTCUTS MODAL -->
+    <div id="shortcuts-modal" class="modal-overlay">
+        <div class="modal-card" style="max-width: 480px;">
+            <div class="modal-header">
+                <h3 data-i18n="shortcuts_title"><i class="ph-bold ph-keyboard"></i> Klaviatura Tezkor Tugmalari</h3>
+                <button class="modal-close-btn"><i class="ph-bold ph-x"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="shortcuts-list">
+                    <div class="shortcut-item">
+                        <kbd class="shortcut-key">H</kbd>
+                        <span class="shortcut-desc" data-i18n="sc_hint">Aqlli maslahat (Bitta bo'lakni o'z joyiga uchirish)</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <div class="shortcut-keys"><kbd class="shortcut-key">Space</kbd> <span style="font-size:11px; color:var(--text-muted)">yoki</span> <kbd class="shortcut-key">P</kbd></div>
+                        <span class="shortcut-desc" data-i18n="sc_preview">Asl rasmni koʻrish (Bosib turganda bir zumda koʻrinadi)</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <kbd class="shortcut-key">R</kbd>
+                        <span class="shortcut-desc" data-i18n="sc_restart">Pazlni qayta boshlash</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <kbd class="shortcut-key">M</kbd>
+                        <span class="shortcut-desc" data-i18n="sc_music">Tinchlantiruvchi meditatsion musiqani yoqish/oʻchirish</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <kbd class="shortcut-key">S</kbd>
+                        <span class="shortcut-desc" data-i18n="sc_sound">Ovoz effektlarini yoqish/oʻchirish</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <kbd class="shortcut-key">F</kbd>
+                        <span class="shortcut-desc" data-i18n="sc_fullscreen">Toʻliq ekran (Fullscreen) rejimiga oʻtish</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <div class="shortcut-keys"><kbd class="shortcut-key">1</kbd> <kbd class="shortcut-key">2</kbd> <kbd class="shortcut-key">3</kbd> <kbd class="shortcut-key">4</kbd></div>
+                        <span class="shortcut-desc" data-i18n="sc_modes">Oʻyin rejimlarini tanlash (Mozaika, Bosqichlar, Suriluvchi, Almashtirish)</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <kbd class="shortcut-key">Esc</kbd>
+                        <span class="shortcut-desc" data-i18n="sc_escape">Oynalarni yopish / Tanlangan bo'lakni bekor qilish</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer" style="justify-content: flex-end;">
+                <button class="btn btn-primary modal-close-btn" data-i18n="btn_got_it">Tushunarli</button>
             </div>
         </div>
     </div>

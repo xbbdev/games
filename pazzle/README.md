@@ -45,13 +45,14 @@ Ushbu platforma **100% oflayn** ishlaydi, hech qanday internet ulanishi shart em
 ---
 
 ### 4. 🧩 Haqiqiy Mozaika Studiyasi (Pro Jigsaw Drag & Drop)
-* **Maxsus Boʻlaklar Javoni (Bottom Piece Tray)**: Hamma boʻlaklar ekranning pastki qismidagi javonda tartib bilan turadi, sichqoncha gʻildiragi yoki `◀` / `▶` tugmalari bilan oʻng-chapga aylanadi.
-* **3D Fizikali Sudrash (Lift & Drag)**: Boʻlakni ushlaganingizda u qoʻlingizga koʻtarilgandek kattalashadi va ostiga nozik soya tushadi.
-* **Magnitli Tortishish (Magnetic Snap) va Uchqunlar**: Doskadagi toʻgʻri katakka yaqinlashtirganda toza ramka bilan belgilanadi va yaqin keltirganda magnit kabi "qars" etib joyiga tortiladi!
-* **Faqat Qirralar Filtri (Edge Filter)**: Bir bosishda javondagi oʻrta boʻlaklarni yashirib, faqat toʻrtta tashqi qirra boʻlaklarini ajratib koʻrsatadi.
-* **Javonga Yigʻish (Clean up to Tray)**: Stolda sochilib yotgan boʻlaklarni bir zumda yana javonga tartiblab yigʻadi.
-* **Asl Rasm Shaffofligi (Ghost Slider)**: Asosdagi namuna rasmining shaffofligini 0% dan 100% gacha slayder orqali oʻzingizga qulay qilib sozlashingiz mumkin.
-* **Jonli Foiz Koʻrsatkichi (Live Progress Bar)**: Doskada qancha boʻlak yigʻilganini real vaqtda koʻrsatadi (`12/16 (75%)`).
+* **Maxsus Boʻlaklar Javoni (Bottom Piece Tray)**: Hamma boʻlaklar pastdagi javonda turadi. Kompyuterda sichqoncha gʻildiragi yoki tugmalar bilan, **mobil qurilmalarda esa barmogʻingiz bilan gorizontal siljitish (Touch Swipe)** orqali aylanadi.
+* **Touch Lift Offset (Barmoq osti koʻrinishi)**: Smartfonda boʻlakni ushlaganingizda u barmoqdan biroz yuqoriroqqa koʻtariladi, natijada barmoq boʻlakni va doskadagi katakni toʻsib qoʻymaydi!
+* **Tap-to-Select & Tap-to-Place (Bir bosish bilan boshqarish)**: Boʻlakni sudrab yurmasdan, shunchaki unga bir marta bosib tanlab, doskadagi katakka bossangiz boʻlak avtomatik joylashadi.
+* **Taktil tebranish (Haptic Feedback)**: Magnitli qulflanish (Snap) paytida telefonda nozik mikro-tebranish his etiladi.
+* **Tezkor Asl Rasm (Hold-to-Preview & Floating Mini-Card)**: Doskadagi kichik miniatyurani yoki `Asl rasm` tugmasini bosib turganda (yoki klaviaturada `Space` / `P` bosilganda) asl rasm bir zumda koʻrinadi.
+* **Klaviatura tezkor tugmalari (Hotkeys)**: `H` (maslahat), `R` (qayta boshlash), `Space`/`P` (namuna), `M` (musiqa), `S` (ovoz), `F` (toʻliq ekran), `1`-`4` (rejimlar), `Esc` (yopish).
+* **Magnitli Tortishish (Magnetic Snap) va Uchqunlar**: Doskadagi toʻgʻri katakka yaqinlashtirganda toza ramka bilan belgilanadi va magnit kabi joyiga tortiladi!
+* **Dinamik Yulduzlar (Star Goals)**: Har bir oʻlcham va rejim uchun aniq vaqt va qadamlar talabi (⭐⭐⭐) koʻrsatiladi.
 
 ---
 
