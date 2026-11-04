@@ -724,16 +724,13 @@ class ArtPresets {
         canvas.height = size;
         const ctx = canvas.getContext('2d');
 
-        // Elegant dark carbon weave texture
-        const grad = ctx.createLinearGradient(0, 0, size, size);
-        grad.addColorStop(0, '#1e2430');
-        grad.addColorStop(0.5, '#141822');
-        grad.addColorStop(1, '#0d1017');
-        ctx.fillStyle = grad;
+        // Clean solid flat texture (no gradients)
+        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+        ctx.fillStyle = isDark ? '#1a2333' : '#f1f5f9';
         ctx.fillRect(0, 0, size, size);
 
-        // Subtle tech grid
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
+        // Subtle clean grid
+        ctx.strokeStyle = isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)';
         ctx.lineWidth = 1;
         const step = 40;
         for (let x = 0; x < size; x += step) {

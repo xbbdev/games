@@ -1,43 +1,69 @@
 // Main Application Controller & UI Orchestrator
-// Coordinates Drag & Drop Jigsaw Studio, Sliding Puzzle, Swap Puzzle, and Campaign engines.
+// Coordinates Drag & Drop Jigsaw Studio, Sliding Puzzle, Swap Puzzle, and Level Progression.
+// Automatically advances to the NEXT LEVEL upon puzzle completion without replaying!
 
 class App {
     constructor() {
         this.lang = 'uz';
-        this.currentMode = 'jigsaw'; // Flagship default: Jigsaw Drag & Drop!
-        this.currentSize = 4;
+        this.currentMode = 'jigsaw'; // Default flagship mode: Drag & Drop Jigsaw
+
+        // Mode Level Trackers (saved in localStorage)
+        this.jigsawLevel = parseInt(localStorage.getItem('pazzle_jigsaw_level') || '1', 10);
+        this.slidingLevel = parseInt(localStorage.getItem('pazzle_sliding_level') || '1', 10);
+        this.swapLevel = parseInt(localStorage.getItem('pazzle_swap_level') || '1', 10);
+        this.currentCampaignLevel = window.campaignManager.progress.unlockedLevel || 1;
+
+        this.currentSize = 2;
         this.currentArtId = 'ancient_mosaic';
         this.currentImageUrl = null;
-        this.currentCampaignLevel = 1;
         this.activeGame = null;
+
+        // Auto-advance timer
+        this.autoAdvanceTimer = null;
+        this.nextLevelToPlay = null;
+
+        // Progressive Jigsaw Levels Ladder
+        this.jigsawLevels = [
+            { level: 1, size: 2, art: 'ancient_mosaic', name: '1-Bosqich: Registon Mozaikasi (2x2)', name_en: 'Level 1: Samarkand Mosaic (2x2)', name_ru: 'Уровень 1: Мозаика Регистана (2x2)' },
+            { level: 2, size: 3, art: 'galaxy', name: '2-Bosqich: Fazoviy Galaktika (3x3)', name_en: 'Level 2: Cosmic Galaxy (3x3)', name_ru: 'Уровень 2: Галактика (3x3)' },
+            { level: 3, size: 3, art: 'sunset_mountain', name: '3-Bosqich: Togʻ va Quyosh (3x3)', name_en: 'Level 3: Mountain Sunset (3x3)', name_ru: 'Уровень 3: Закат в горах (3x3)' },
+            { level: 4, size: 4, art: 'nature_forest', name: '4-Bosqich: Zumrad Oʻrmon (4x4)', name_en: 'Level 4: Emerald Forest (4x4)', name_ru: 'Уровень 4: Изумрудный лес (4x4)' },
+            { level: 5, size: 4, art: 'cyber_city', name: '5-Bosqich: Kiber Neon Shahar (4x4)', name_en: 'Level 5: Cyber Neon City (4x4)', name_ru: 'Уровень 5: Кибер Город (4x4)' },
+            { level: 6, size: 5, art: 'geometric_mandala', name: '6-Bosqich: Oltin Mandala (5x5)', name_en: 'Level 6: Golden Mandala (5x5)', name_ru: 'Уровень 6: Золотая Мандала (5x5)' },
+            { level: 7, size: 5, art: 'ancient_mosaic', name: '7-Bosqich: Tarixiy Naqshlar (5x5)', name_en: 'Level 7: Ancient Patterns (5x5)', name_ru: 'Уровень 7: Древние узоры (5x5)' },
+            { level: 8, size: 6, art: 'galaxy', name: '8-Bosqich: Koinot Mozaikasi (6x6)', name_en: 'Level 8: Nebula Master (6x6)', name_ru: 'Уровень 8: Космический мастер (6x6)' },
+            { level: 9, size: 6, art: 'cyber_city', name: '9-Bosqich: Grossmeyster Neon (6x6)', name_en: 'Level 9: Grandmaster Neon (6x6)', name_ru: 'Уровень 9: Гроссмейстер Неон (6x6)' },
+            { level: 10, size: 8, art: 'geometric_mandala', name: '10-Bosqich: Afsonaviy Daho (8x8)', name_en: 'Level 10: Legendary Master (8x8)', name_ru: 'Уровень 10: Легендарный Гений (8x8)' }
+        ];
 
         this.translations = {
             uz: {
                 app_title: "PAZZLE MASTER",
                 app_subtitle: "DRAG & DROP MUKAMMALLIK",
-                tab_jigsaw: "🧩 Mozaika (Drag & Drop)",
-                tab_campaign: "🏆 Bosqichlar",
-                tab_sliding: "🔲 Suriluvchi Pazl",
-                tab_swap: "🔄 Almashtirish",
-                hud_level: "Rejim",
+                tab_jigsaw: "Mozaika (Drag & Drop)",
+                tab_campaign: "Bosqichlar",
+                tab_sliding: "Suriluvchi Pazl",
+                tab_swap: "Almashtirish",
+                hud_level: "Bosqich",
                 hud_moves: "Qadamlar",
                 hud_time: "Vaqt",
                 hud_stars: "Yulduzlar",
-                btn_restart: "🔄 Qayta boshlash",
-                btn_hint: "💡 Maslahat",
-                btn_solve: "🤖 Avto-yechish",
-                btn_preview: "👁️ Asl rasm",
-                btn_numbers: "🔢 Raqamlar",
-                btn_undo: "↩️ Qaytish",
-                btn_image: "🖼️ Rasm tanlash",
-                btn_levels: "🏆 Bosqichlar",
-                ghost_opacity: "👁️ Shaffoflik:",
-                btn_edge_filter: "🧩 Faqat qirralar",
-                btn_tray_clean: "📥 Javonga yigʻish",
+                btn_restart: "Qayta boshlash",
+                btn_hint: "Maslahat",
+                btn_solve: "Avto-yechish",
+                btn_preview: "Asl rasm",
+                btn_numbers: "Raqamlar",
+                btn_undo: "Qaytish",
+                btn_image: "Rasm tanlash",
+                btn_levels: "Bosqichlar",
+                ghost_opacity: "Shaffoflik:",
+                btn_edge_filter: "Faqat qirralar",
+                btn_tray_clean: "Javonga yigʻish",
                 victory_title: "GʻALABA! MUKAMMAL!",
                 victory_msg: "Pazl muvaffaqiyatli yigʻildi!",
                 victory_next: "Keyingi bosqich ➔",
                 victory_replay: "Qayta oʻynash",
+                auto_advance_msg: "Keyingi bosqich {s} soniyada boshlanadi...",
                 modal_choose_art: "Pazl uchun rasm tanlang",
                 upload_prompt: "Oʻz suratingizni yuklang (JPG/PNG)",
                 size_label: "Oʻlcham:",
@@ -46,29 +72,30 @@ class App {
             en: {
                 app_title: "PUZZLE MASTER",
                 app_subtitle: "DRAG & DROP PERFECTION",
-                tab_jigsaw: "🧩 Jigsaw (Drag & Drop)",
-                tab_campaign: "🏆 Campaign",
-                tab_sliding: "🔲 Sliding Puzzle",
-                tab_swap: "🔄 Tile Swap",
-                hud_level: "Mode",
+                tab_jigsaw: "Jigsaw (Drag & Drop)",
+                tab_campaign: "Campaign",
+                tab_sliding: "Sliding Puzzle",
+                tab_swap: "Tile Swap",
+                hud_level: "Level",
                 hud_moves: "Moves",
                 hud_time: "Time",
                 hud_stars: "Stars",
-                btn_restart: "🔄 Restart",
-                btn_hint: "💡 Hint",
-                btn_solve: "🤖 AI Solve",
-                btn_preview: "👁️ Preview",
-                btn_numbers: "🔢 Numbers",
-                btn_undo: "↩️ Undo",
-                btn_image: "🖼️ Change Art",
-                btn_levels: "🏆 Levels",
-                ghost_opacity: "👁️ Ghost:",
-                btn_edge_filter: "🧩 Edges Only",
-                btn_tray_clean: "📥 Send to Tray",
+                btn_restart: "Restart",
+                btn_hint: "Hint",
+                btn_solve: "AI Solve",
+                btn_preview: "Preview",
+                btn_numbers: "Numbers",
+                btn_undo: "Undo",
+                btn_image: "Change Art",
+                btn_levels: "Levels",
+                ghost_opacity: "Ghost:",
+                btn_edge_filter: "Edges Only",
+                btn_tray_clean: "Send to Tray",
                 victory_title: "VICTORY! PERFECT!",
                 victory_msg: "Puzzle solved successfully!",
                 victory_next: "Next Level ➔",
                 victory_replay: "Play Again",
+                auto_advance_msg: "Next level in {s}s...",
                 modal_choose_art: "Select Puzzle Artwork",
                 upload_prompt: "Upload your custom photo (JPG/PNG)",
                 size_label: "Size:",
@@ -77,29 +104,30 @@ class App {
             ru: {
                 app_title: "МАСТЕР ПАЗЛОВ",
                 app_subtitle: "DRAG & DROP СОВЕРШЕНСТВО",
-                tab_jigsaw: "🧩 Мозаика (Drag & Drop)",
-                tab_campaign: "🏆 Кампания",
-                tab_sliding: "🔲 Пятнашки",
-                tab_swap: "🔄 Обмен плиток",
-                hud_level: "Режим",
+                tab_jigsaw: "Мозаика (Drag & Drop)",
+                tab_campaign: "Кампания",
+                tab_sliding: "Пятнашки",
+                tab_swap: "Обмен плиток",
+                hud_level: "Уровень",
                 hud_moves: "Ходы",
                 hud_time: "Время",
                 hud_stars: "Звёзды",
-                btn_restart: "🔄 Заново",
-                btn_hint: "💡 Подсказка",
-                btn_solve: "🤖 Авто-сборка",
-                btn_preview: "👁️ Образец",
-                btn_numbers: "🔢 Цифры",
-                btn_undo: "↩️ Назад",
-                btn_image: "🖼️ Выбрать арт",
-                btn_levels: "🏆 Уровни",
-                ghost_opacity: "👁️ Образец:",
-                btn_edge_filter: "🧩 Только края",
-                btn_tray_clean: "📥 Собрать в лоток",
+                btn_restart: "Заново",
+                btn_hint: "Подсказка",
+                btn_solve: "Авто-сборка",
+                btn_preview: "Образец",
+                btn_numbers: "Цифры",
+                btn_undo: "Назад",
+                btn_image: "Выбрать арт",
+                btn_levels: "Уровни",
+                ghost_opacity: "Образец:",
+                btn_edge_filter: "Только края",
+                btn_tray_clean: "Собрать в лоток",
                 victory_title: "ПОБЕДА! ВЕЛИКОЛЕПНО!",
                 victory_msg: "Головоломка успешно решена!",
                 victory_next: "Следующий уровень ➔",
                 victory_replay: "Играть снова",
+                auto_advance_msg: "Следующий уровень через {s}с...",
                 modal_choose_art: "Выберите изображение",
                 upload_prompt: "Загрузить своё фото (JPG/PNG)",
                 size_label: "Размер:",
@@ -118,8 +146,8 @@ class App {
         this.applyLanguage();
         this.setupTheme();
 
-        // Start directly with Flagship Jigsaw mode
-        this.switchMode('jigsaw');
+        // Start directly with the user's current Jigsaw level
+        this.startJigsawLevel(this.jigsawLevel);
     }
 
     cacheDOMElements() {
@@ -156,6 +184,7 @@ class App {
         this.levelModal = document.getElementById('level-modal');
         this.artModal = document.getElementById('art-modal');
         this.victoryModal = document.getElementById('victory-modal');
+        this.autoAdvanceText = document.getElementById('auto-advance-text');
         this.previewModal = document.getElementById('preview-modal');
         this.imageUploadInput = document.getElementById('image-upload-input');
     }
@@ -173,12 +202,13 @@ class App {
         this.btnSound.addEventListener('click', () => {
             const enabled = window.soundEngine.toggleSound();
             this.btnSound.classList.toggle('active', enabled);
-            this.btnSound.textContent = enabled ? '🔊' : '🔇';
+            this.btnSound.innerHTML = enabled ? '<i class="ph-bold ph-speaker-high"></i>' : '<i class="ph-bold ph-speaker-slash"></i>';
         });
 
         this.btnMusic.addEventListener('click', () => {
             const enabled = window.soundEngine.toggleMusic();
             this.btnMusic.classList.toggle('active', enabled);
+            this.btnMusic.innerHTML = enabled ? '<i class="ph-fill ph-music-note"></i>' : '<i class="ph-bold ph-music-note"></i>';
         });
 
         this.btnFullscreen.addEventListener('click', () => this.toggleFullscreen());
@@ -189,7 +219,12 @@ class App {
         });
 
         this.themeSelect.addEventListener('change', (e) => {
-            document.documentElement.setAttribute('data-theme', e.target.value);
+            this.theme = e.target.value;
+            localStorage.setItem('pazzle_theme', this.theme);
+            document.documentElement.setAttribute('data-theme', this.theme);
+            if (this.activeGame && this.activeGame.render) {
+                this.activeGame.render();
+            }
         });
 
         this.sizeSelect.addEventListener('change', (e) => {
@@ -269,31 +304,26 @@ class App {
         document.querySelectorAll('.modal-close-btn, .modal-backdrop-close').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const modal = e.target.closest('.modal-overlay');
-                if (modal) modal.classList.remove('active');
+                if (modal) {
+                    if (this.autoAdvanceTimer) {
+                        clearInterval(this.autoAdvanceTimer);
+                        this.autoAdvanceTimer = null;
+                    }
+                    modal.classList.remove('active');
+                }
             });
         });
 
         document.querySelectorAll('.modal-overlay').forEach(overlay => {
             overlay.addEventListener('click', (e) => {
                 if (e.target === overlay) {
+                    if (this.autoAdvanceTimer) {
+                        clearInterval(this.autoAdvanceTimer);
+                        this.autoAdvanceTimer = null;
+                    }
                     overlay.classList.remove('active');
                 }
             });
-        });
-
-        // Victory Next Level button
-        document.getElementById('btn-victory-next').addEventListener('click', () => {
-            this.victoryModal.classList.remove('active');
-            if (this.nextLevelToPlay) {
-                this.startCampaignLevel(this.nextLevelToPlay);
-            } else {
-                this.startCurrentModeGame();
-            }
-        });
-
-        document.getElementById('btn-victory-replay').addEventListener('click', () => {
-            this.victoryModal.classList.remove('active');
-            this.startCurrentModeGame();
         });
     }
 
@@ -303,19 +333,33 @@ class App {
             el.textContent = this.t(key);
         });
 
-        if (this.currentMode === 'campaign') {
+        this.updateHUDLevelTitle();
+    }
+
+    updateHUDLevelTitle() {
+        if (this.currentMode === 'jigsaw') {
+            const cfg = this.getJigsawConfig(this.jigsawLevel);
+            const nameKey = this.lang === 'en' ? 'name_en' : (this.lang === 'ru' ? 'name_ru' : 'name');
+            this.hudLevel.textContent = cfg[nameKey] || cfg.name;
+        } else if (this.currentMode === 'campaign') {
             const lvl = window.campaignManager.getLevel(this.currentCampaignLevel);
             if (lvl) {
                 const nameKey = this.lang === 'en' ? 'name_en' : (this.lang === 'ru' ? 'name_ru' : 'name');
                 this.hudLevel.textContent = lvl[nameKey] || lvl.name;
             }
-        } else {
-            this.hudLevel.textContent = this.t('tab_' + this.currentMode);
+        } else if (this.currentMode === 'sliding') {
+            this.hudLevel.textContent = `${this.slidingLevel}-Bosqich (Suriluvchi ${this.currentSize}x${this.currentSize})`;
+        } else if (this.currentMode === 'swap') {
+            this.hudLevel.textContent = `${this.swapLevel}-Bosqich (Almashtirish ${this.currentSize}x${this.currentSize})`;
         }
     }
 
     setupTheme() {
-        document.documentElement.setAttribute('data-theme', 'default');
+        this.theme = localStorage.getItem('pazzle_theme') || 'light';
+        document.documentElement.setAttribute('data-theme', this.theme);
+        if (this.themeSelect) {
+            this.themeSelect.value = this.theme;
+        }
     }
 
     switchMode(mode) {
@@ -334,44 +378,128 @@ class App {
         document.getElementById('btn-numbers').style.display = (mode === 'sliding' || mode === 'swap') ? 'inline-flex' : 'none';
         this.hudStarsGroup.style.display = (mode === 'campaign') ? 'flex' : 'none';
 
-        if (mode === 'campaign') {
+        if (mode === 'jigsaw') {
+            this.startJigsawLevel(this.jigsawLevel);
+        } else if (mode === 'campaign') {
             this.startCampaignLevel(this.currentCampaignLevel);
-        } else {
-            this.hudLevel.textContent = this.t('tab_' + mode);
-            this.startCurrentModeGame();
+        } else if (mode === 'sliding') {
+            this.startSlidingLevel(this.slidingLevel);
+        } else if (mode === 'swap') {
+            this.startSwapLevel(this.swapLevel);
         }
     }
 
-    async startCurrentModeGame() {
+    getJigsawConfig(lvl) {
+        if (lvl <= this.jigsawLevels.length) {
+            return this.jigsawLevels[lvl - 1];
+        }
+        // Endless progression beyond level 10
+        const artList = ['ancient_mosaic', 'galaxy', 'sunset_mountain', 'nature_forest', 'cyber_city', 'geometric_mandala'];
+        const art = artList[(lvl - 1) % artList.length];
+        const sizes = [3, 4, 4, 5, 5, 6, 8];
+        const size = sizes[(lvl - 1) % sizes.length];
+        return {
+            level: lvl,
+            size,
+            art,
+            name: `${lvl}-Bosqich: Master Mozaika (${size}x${size})`,
+            name_en: `Level ${lvl}: Master Jigsaw (${size}x${size})`,
+            name_ru: `Уровень ${lvl}: Мастер Мозаика (${size}x${size})`
+        };
+    }
+
+    async startJigsawLevel(lvlNum) {
+        this.jigsawLevel = lvlNum;
+        localStorage.setItem('pazzle_jigsaw_level', lvlNum);
+
+        const cfg = this.getJigsawConfig(lvlNum);
+        this.currentSize = cfg.size;
+        this.sizeSelect.value = cfg.size.toString();
+        this.updateHUDLevelTitle();
+
+        let imgUrl = null;
+        if (this.currentArtId === 'custom' && this.currentImageUrl) {
+            imgUrl = this.currentImageUrl;
+        } else {
+            this.currentArtId = cfg.art;
+            imgUrl = await window.artPresets.getImage(cfg.art);
+            this.currentImageUrl = imgUrl;
+        }
+
         if (this.activeGame && this.activeGame.destroy) {
             this.activeGame.destroy();
         } else if (this.activeGame && this.activeGame.stopTimer) {
             this.activeGame.stopTimer();
         }
 
-        const size = this.currentSize;
-        let imgUrl = this.currentImageUrl;
-
-        if (!imgUrl && this.currentArtId !== 'numbers') {
-            imgUrl = await window.artPresets.getImage(this.currentArtId);
-            this.currentImageUrl = imgUrl;
-        }
-
-        const onWin = (res) => this.handleWin(res);
+        const onWin = (res) => this.handleJigsawWin(res);
         const onMove = (stats) => this.updateHUD(stats);
         const onProgress = (prog) => this.updateProgress(prog);
 
-        if (this.currentMode === 'jigsaw') {
-            this.activeGame = new JigsawGame(this.boardContainer, onWin, onMove, onProgress);
-            this.activeGame.init(size, imgUrl, false);
-            this.btnEdgeFilter.classList.remove('active');
-        } else if (this.currentMode === 'sliding') {
-            this.activeGame = new SlidingGame(this.boardContainer, onWin, onMove);
-            this.activeGame.init(size, imgUrl, 'hard');
-        } else if (this.currentMode === 'swap') {
-            this.activeGame = new SwapGame(this.boardContainer, onWin, onMove);
-            this.activeGame.init(size, imgUrl);
+        this.activeGame = new JigsawGame(this.boardContainer, onWin, onMove, onProgress);
+        this.activeGame.init(this.currentSize, imgUrl, false);
+        this.btnEdgeFilter.classList.remove('active');
+    }
+
+    async startSlidingLevel(lvlNum) {
+        this.slidingLevel = lvlNum;
+        localStorage.setItem('pazzle_sliding_level', lvlNum);
+
+        const sizes = [3, 3, 4, 4, 5, 5, 6, 8];
+        const artList = ['numbers', 'ancient_mosaic', 'galaxy', 'sunset_mountain', 'nature_forest', 'cyber_city', 'geometric_mandala'];
+        const size = sizes[(lvlNum - 1) % sizes.length] || 4;
+        const art = artList[(lvlNum - 1) % artList.length];
+
+        this.currentSize = size;
+        this.sizeSelect.value = size.toString();
+        this.updateHUDLevelTitle();
+
+        let imgUrl = null;
+        if (art !== 'numbers') {
+            imgUrl = await window.artPresets.getImage(art);
         }
+        this.currentImageUrl = imgUrl;
+
+        if (this.activeGame && this.activeGame.destroy) {
+            this.activeGame.destroy();
+        } else if (this.activeGame && this.activeGame.stopTimer) {
+            this.activeGame.stopTimer();
+        }
+
+        const onWin = (res) => this.handleSlidingWin(res);
+        const onMove = (stats) => this.updateHUD(stats);
+
+        this.activeGame = new SlidingGame(this.boardContainer, onWin, onMove);
+        this.activeGame.init(size, imgUrl, 'hard');
+    }
+
+    async startSwapLevel(lvlNum) {
+        this.swapLevel = lvlNum;
+        localStorage.setItem('pazzle_swap_level', lvlNum);
+
+        const sizes = [3, 4, 4, 5, 5, 6];
+        const artList = ['sunset_mountain', 'galaxy', 'ancient_mosaic', 'nature_forest', 'cyber_city', 'geometric_mandala'];
+        const size = sizes[(lvlNum - 1) % sizes.length] || 4;
+        const art = artList[(lvlNum - 1) % artList.length];
+
+        this.currentSize = size;
+        this.sizeSelect.value = size.toString();
+        this.updateHUDLevelTitle();
+
+        const imgUrl = await window.artPresets.getImage(art);
+        this.currentImageUrl = imgUrl;
+
+        if (this.activeGame && this.activeGame.destroy) {
+            this.activeGame.destroy();
+        } else if (this.activeGame && this.activeGame.stopTimer) {
+            this.activeGame.stopTimer();
+        }
+
+        const onWin = (res) => this.handleSwapWin(res);
+        const onMove = (stats) => this.updateHUD(stats);
+
+        this.activeGame = new SwapGame(this.boardContainer, onWin, onMove);
+        this.activeGame.init(size, imgUrl);
     }
 
     async startCampaignLevel(levelId) {
@@ -379,8 +507,7 @@ class App {
         if (!lvl) return;
 
         this.currentCampaignLevel = levelId;
-        const nameKey = this.lang === 'en' ? 'name_en' : (this.lang === 'ru' ? 'name_ru' : 'name');
-        this.hudLevel.textContent = lvl[nameKey] || lvl.name;
+        this.updateHUDLevelTitle();
 
         let imgUrl = null;
         if (lvl.art !== 'numbers') {
@@ -417,31 +544,72 @@ class App {
         this.updateHUDStars(window.campaignManager.progress.stars[levelId] || 0);
     }
 
-    updateProgress({ locked, total, percent }) {
-        this.hudProgressText.textContent = `${locked}/${total} (${percent}%)`;
-        this.hudProgressFill.style.width = `${percent}%`;
+    // WIN HANDLERS WITH AUTOMATIC LEVEL ADVANCEMENT
+    handleJigsawWin(res) {
+        const nextLvl = this.jigsawLevel + 1;
+        this.showVictoryModalWithAutoAdvance({
+            completedTitle: `${this.jigsawLevel}-Bosqich yakunlandi!`,
+            nextLevelName: `${nextLvl}-Bosqichga oʻtish ➔`,
+            moves: res.moves,
+            time: res.time,
+            stars: 3,
+            onAdvance: () => this.startJigsawLevel(nextLvl)
+        });
+    }
+
+    handleSlidingWin(res) {
+        const nextLvl = this.slidingLevel + 1;
+        this.showVictoryModalWithAutoAdvance({
+            completedTitle: `${this.slidingLevel}-Bosqich yakunlandi!`,
+            nextLevelName: `${nextLvl}-Bosqichga oʻtish ➔`,
+            moves: res.moves,
+            time: res.time,
+            stars: 3,
+            onAdvance: () => this.startSlidingLevel(nextLvl)
+        });
+    }
+
+    handleSwapWin(res) {
+        const nextLvl = this.swapLevel + 1;
+        this.showVictoryModalWithAutoAdvance({
+            completedTitle: `${this.swapLevel}-Bosqich yakunlandi!`,
+            nextLevelName: `${nextLvl}-Bosqichga oʻtish ➔`,
+            moves: res.moves,
+            time: res.time,
+            stars: 3,
+            onAdvance: () => this.startSwapLevel(nextLvl)
+        });
     }
 
     handleCampaignWin(levelId, res) {
         const result = window.campaignManager.recordWin(levelId, res.moves, res.time);
-        this.nextLevelToPlay = result.nextLevelId;
+        const nextLvl = result.nextLevelId || 1;
 
-        this.showVictoryModal({
-            stars: result.stars,
+        this.showVictoryModalWithAutoAdvance({
+            completedTitle: `${levelId}-Bosqich yakunlandi!`,
+            nextLevelName: `${nextLvl}-Bosqichga oʻtish ➔`,
             moves: res.moves,
             time: res.time,
-            hasNext: !!result.nextLevelId
+            stars: result.stars,
+            onAdvance: () => this.startCampaignLevel(nextLvl)
         });
     }
 
-    handleWin(res) {
-        this.nextLevelToPlay = null;
-        this.showVictoryModal({
-            stars: 3,
-            moves: res.moves,
-            time: res.time,
-            hasNext: false
-        });
+    startCurrentModeGame() {
+        if (this.currentMode === 'jigsaw') {
+            this.startJigsawLevel(this.jigsawLevel);
+        } else if (this.currentMode === 'sliding') {
+            this.startSlidingLevel(this.slidingLevel);
+        } else if (this.currentMode === 'swap') {
+            this.startSwapLevel(this.swapLevel);
+        } else {
+            this.startCampaignLevel(this.currentCampaignLevel);
+        }
+    }
+
+    updateProgress({ locked, total, percent }) {
+        this.hudProgressText.textContent = `${locked}/${total} (${percent}%)`;
+        this.hudProgressFill.style.width = `${percent}%`;
     }
 
     updateHUD(stats) {
@@ -454,20 +622,24 @@ class App {
     updateHUDStars(count) {
         this.hudStarsContainer.innerHTML = '';
         for (let i = 1; i <= 3; i++) {
-            const span = document.createElement('span');
-            span.textContent = '★';
-            if (i <= count) span.className = 'star-filled';
-            this.hudStarsContainer.appendChild(span);
+            const icon = document.createElement('i');
+            icon.className = (i <= count) ? 'ph-fill ph-star star-filled' : 'ph-bold ph-star';
+            this.hudStarsContainer.appendChild(icon);
         }
     }
 
-    showVictoryModal({ stars, moves, time, hasNext }) {
+    // VICTORY MODAL WITH AUTOMATIC 3-SECOND ADVANCE COUNTDOWN
+    showVictoryModalWithAutoAdvance({ completedTitle, nextLevelName, moves, time, stars, onAdvance }) {
+        if (this.autoAdvanceTimer) {
+            clearInterval(this.autoAdvanceTimer);
+            this.autoAdvanceTimer = null;
+        }
+
         const starsBox = document.getElementById('victory-stars-box');
         starsBox.innerHTML = '';
         for (let i = 1; i <= 3; i++) {
-            const s = document.createElement('span');
-            s.textContent = '★';
-            if (i <= stars) s.className = 'star-filled';
+            const s = document.createElement('i');
+            s.className = (i <= stars) ? 'ph-fill ph-star star-filled' : 'ph-bold ph-star';
             starsBox.appendChild(s);
         }
 
@@ -477,7 +649,50 @@ class App {
         document.getElementById('victory-time-val').textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
 
         const nextBtn = document.getElementById('btn-victory-next');
-        nextBtn.style.display = hasNext ? 'inline-flex' : 'none';
+        nextBtn.style.display = 'inline-flex';
+        nextBtn.textContent = nextLevelName;
+
+        const replayBtn = document.getElementById('btn-victory-replay');
+
+        // Countdown timer: 3 seconds to next level!
+        let countdown = 3;
+        const updateCountdown = () => {
+            const template = this.t('auto_advance_msg');
+            this.autoAdvanceText.textContent = template.replace('{s}', countdown);
+        };
+        updateCountdown();
+
+        this.autoAdvanceTimer = setInterval(() => {
+            countdown--;
+            if (countdown <= 0) {
+                clearInterval(this.autoAdvanceTimer);
+                this.autoAdvanceTimer = null;
+                this.victoryModal.classList.remove('active');
+                onAdvance();
+            } else {
+                updateCountdown();
+            }
+        }, 1000);
+
+        // Immediate click advance
+        nextBtn.onclick = () => {
+            if (this.autoAdvanceTimer) {
+                clearInterval(this.autoAdvanceTimer);
+                this.autoAdvanceTimer = null;
+            }
+            this.victoryModal.classList.remove('active');
+            onAdvance();
+        };
+
+        // Replay current level
+        replayBtn.onclick = () => {
+            if (this.autoAdvanceTimer) {
+                clearInterval(this.autoAdvanceTimer);
+                this.autoAdvanceTimer = null;
+            }
+            this.victoryModal.classList.remove('active');
+            this.startCurrentModeGame();
+        };
 
         this.victoryModal.classList.add('active');
     }
@@ -502,9 +717,9 @@ class App {
                 <div class="level-card-top">
                     <span class="level-num">#${lvl.id}</span>
                     <div class="level-stars">
-                        <span class="${stars >= 1 ? 'star-filled' : ''}">★</span>
-                        <span class="${stars >= 2 ? 'star-filled' : ''}">★</span>
-                        <span class="${stars >= 3 ? 'star-filled' : ''}">★</span>
+                        <i class="${stars >= 1 ? 'ph-fill ph-star star-filled' : 'ph-bold ph-star'}"></i>
+                        <i class="${stars >= 2 ? 'ph-fill ph-star star-filled' : 'ph-bold ph-star'}"></i>
+                        <i class="${stars >= 3 ? 'ph-fill ph-star star-filled' : 'ph-bold ph-star'}"></i>
                     </div>
                 </div>
                 <div class="level-title">${levelTitle}</div>
@@ -591,11 +806,11 @@ class App {
             }
             numPreview.style.display = 'block';
             numPreview.innerHTML = `
-                <div style="font-size: 36px; margin-bottom: 12px;">🔢</div>
+                <div style="margin-bottom: 12px;"><i class="ph-bold ph-hash" style="font-size: 40px; color: var(--accent-gold);"></i></div>
                 <h4 style="font-size: 18px; color: var(--accent-gold); margin-bottom: 8px;">Klassik Raqamlar Tartibi</h4>
                 <p style="color: var(--text-secondary); font-size: 14px; line-height: 1.6;">
-                    Raqamlarni 1 dan boshlab ketma-ketlikda o'sish tartibida joylashtiring.<br>
-                    Oxirgi o'ng pastki katakcha bo'sh (0) holatda qolishi kerak!
+                    Raqamlarni 1 dan boshlab ketma-ketlikda oʻsish tartibida joylashtiring.<br>
+                    Oxirgi oʻng pastki katakcha boʻsh (0) holatda qolishi kerak!
                 </p>
             `;
         }

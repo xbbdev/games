@@ -1,0 +1,13 @@
+/* Phosphor Icons Local Bundle */
+@import url("./regular/style.css");
+@import url("./bold/style.css");
+@import url("./fill/style.css");
+
+/* Helper utility styles */
+.ph, .ph-bold, .ph-fill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    vertical-align: -0.125em;
+}

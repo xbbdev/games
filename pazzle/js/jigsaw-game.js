@@ -390,19 +390,16 @@ class JigsawGame {
 
         const bb = this.boardBounds;
         const tb = this.trayBounds;
+        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
 
-        // 1. BOARD TABLE MAT
+        // 1. BOARD TABLE MAT (SOLID FLAT COLORS, NO GRADIENTS)
         this.ctx.save();
-        // Deep felt/glass mat background
-        const matGrad = this.ctx.createLinearGradient(bb.x, bb.y, bb.x + bb.width, bb.y + bb.height);
-        matGrad.addColorStop(0, 'rgba(15, 23, 42, 0.85)');
-        matGrad.addColorStop(1, 'rgba(10, 15, 30, 0.92)');
-        this.ctx.fillStyle = matGrad;
-        this.ctx.strokeStyle = 'rgba(0, 240, 255, 0.35)';
-        this.ctx.lineWidth = 2.5;
+        this.ctx.fillStyle = isDark ? '#131b2e' : '#f8fafc';
+        this.ctx.strokeStyle = isDark ? '#27354f' : '#cbd5e1';
+        this.ctx.lineWidth = 1.5;
 
         // Rounded rect board mat
-        this.roundRect(this.ctx, bb.x - 6, bb.y - 6, bb.width + 12, bb.height + 12, 14);
+        this.roundRect(this.ctx, bb.x - 6, bb.y - 6, bb.width + 12, bb.height + 12, 12);
         this.ctx.fill();
         this.ctx.stroke();
 
@@ -414,7 +411,7 @@ class JigsawGame {
         }
 
         // Target grid slots outline
-        this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+        this.ctx.strokeStyle = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.07)';
         this.ctx.lineWidth = 1;
         for (let i = 1; i < this.size; i++) {
             this.ctx.beginPath();
@@ -429,32 +426,30 @@ class JigsawGame {
         }
         this.ctx.restore();
 
-        // 2. PIECE TRAY (SHELF AT BOTTOM)
+        // 2. PIECE TRAY (SOLID FLAT COLOR, NO GRADIENTS)
         this.ctx.save();
-        const trayGrad = this.ctx.createLinearGradient(tb.x, tb.y, tb.x, tb.y + tb.height);
-        trayGrad.addColorStop(0, 'rgba(18, 24, 38, 0.95)');
-        trayGrad.addColorStop(1, 'rgba(9, 13, 22, 0.98)');
-        this.ctx.fillStyle = trayGrad;
-        this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.16)';
+        this.ctx.fillStyle = isDark ? '#0b0f19' : '#f1f5f9';
+        this.ctx.strokeStyle = isDark ? '#27354f' : '#cbd5e1';
         this.ctx.lineWidth = 1.5;
 
-        this.roundRect(this.ctx, tb.x, tb.y, tb.width, tb.height, 16);
+        this.roundRect(this.ctx, tb.x, tb.y, tb.width, tb.height, 12);
         this.ctx.fill();
         this.ctx.stroke();
 
         // Tray Title & Count Badge
-        this.ctx.fillStyle = 'rgba(148, 163, 184, 0.8)';
+        this.ctx.fillStyle = isDark ? '#94a3b8' : '#475569';
         this.ctx.font = '600 11px -apple-system, BlinkMacSystemFont, sans-serif';
         const trayPieces = this.getTrayPieces();
-        this.ctx.fillText(`JAVON (TRAY): ${trayPieces.length} BOʻLAK QOLDI`, tb.x + 16, tb.y + 18);
+        this.ctx.fillText(`JAVON: ${trayPieces.length} BOʻLAK QOLDI`, tb.x + 16, tb.y + 18);
 
         // Tray Scroll Indicators (if scrollable)
+        const accentCol = isDark ? '#3b82f6' : '#2563eb';
         if (this.trayScrollX > 5) {
-            this.ctx.fillStyle = 'rgba(0, 240, 255, 0.8)';
+            this.ctx.fillStyle = accentCol;
             this.ctx.fillText('◀', tb.x + tb.width - 45, tb.y + 18);
         }
         if (this.trayScrollX < this.maxTrayScrollX - 5) {
-            this.ctx.fillStyle = 'rgba(0, 240, 255, 0.8)';
+            this.ctx.fillStyle = accentCol;
             this.ctx.fillText('▶', tb.x + tb.width - 25, tb.y + 18);
         }
 
@@ -482,21 +477,18 @@ class JigsawGame {
             this.drawPiece(p, true, 1.0);
         });
 
-        // 4. CURRENTLY DRAGGED PIECE (Top of all layers, with 3D shadow & slight lift)
+        // 4. CURRENTLY DRAGGED PIECE
         if (this.draggedPiece) {
-            // If near snap zone, draw glowing target ghost outline on the board!
             const dist = Math.hypot(this.draggedPiece.x - this.draggedPiece.targetX, this.draggedPiece.y - this.draggedPiece.targetY);
             if (dist < bb.tileSize * 0.45) {
                 this.ctx.save();
-                this.ctx.strokeStyle = '#00f0ff';
-                this.ctx.lineWidth = 3;
-                this.ctx.shadowColor = '#00f0ff';
-                this.ctx.shadowBlur = 16;
+                this.ctx.strokeStyle = isDark ? '#3b82f6' : '#2563eb';
+                this.ctx.lineWidth = 2;
                 this.ctx.strokeRect(this.draggedPiece.targetX, this.draggedPiece.targetY, bb.tileSize, bb.tileSize);
                 this.ctx.restore();
             }
 
-            this.drawPiece(this.draggedPiece, true, 1.06);
+            this.drawPiece(this.draggedPiece, true, 1.05);
         }
 
         // 5. DRAW SPARKLE PARTICLES
@@ -506,6 +498,7 @@ class JigsawGame {
     drawPiece(p, hasShadow = false, scale = 1.0) {
         this.ctx.save();
         const ts = this.boardBounds.tileSize;
+        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
 
         // Position
         this.ctx.translate(p.x, p.y);
@@ -523,10 +516,10 @@ class JigsawGame {
         }
 
         if (hasShadow) {
-            this.ctx.shadowColor = 'rgba(0, 0, 0, 0.65)';
-            this.ctx.shadowBlur = (p === this.draggedPiece) ? 22 : 10;
-            this.ctx.shadowOffsetX = (p === this.draggedPiece) ? 10 : 4;
-            this.ctx.shadowOffsetY = (p === this.draggedPiece) ? 14 : 6;
+            this.ctx.shadowColor = isDark ? 'rgba(0, 0, 0, 0.45)' : 'rgba(0, 0, 0, 0.12)';
+            this.ctx.shadowBlur = (p === this.draggedPiece) ? 12 : 6;
+            this.ctx.shadowOffsetX = 0;
+            this.ctx.shadowOffsetY = (p === this.draggedPiece) ? 6 : 2;
         }
 
         this.ctx.drawImage(p.canvas, -p.pad, -p.pad);
@@ -698,19 +691,20 @@ class JigsawGame {
     }
 
     spawnSnapSparkles(x, y) {
-        const colors = ['#00f0ff', '#ffd700', '#00ff88', '#ff007f', '#ffffff'];
-        for (let i = 0; i < 20; i++) {
+        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+        const colors = isDark ? ['#3b82f6', '#f59e0b', '#22c55e'] : ['#2563eb', '#d97706', '#16a34a'];
+        for (let i = 0; i < 16; i++) {
             const angle = Math.random() * Math.PI * 2;
-            const speed = 2 + Math.random() * 5;
+            const speed = 2 + Math.random() * 4;
             this.sparkles.push({
                 x,
                 y,
                 vx: Math.cos(angle) * speed,
                 vy: Math.sin(angle) * speed,
                 color: colors[Math.floor(Math.random() * colors.length)],
-                size: 2.5 + Math.random() * 3,
+                size: 2 + Math.random() * 2.5,
                 alpha: 1,
-                decay: 0.035 + Math.random() * 0.02
+                decay: 0.04 + Math.random() * 0.02
             });
         }
     }
@@ -732,9 +726,16 @@ class JigsawGame {
             this.ctx.save();
             this.ctx.globalAlpha = Math.max(0, s.alpha);
             this.ctx.fillStyle = s.color;
-            this.ctx.shadowColor = s.color;
-            this.ctx.shadowBlur = 8;
             this.ctx.beginPath();
+            this.ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
+            this.ctx.fill();
+            this.ctx.restore();
+        }
+
+        if (this.sparkles.length > 0) {
+            requestAnimationFrame(() => this.render());
+        }
+    }
             this.ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
             this.ctx.fill();
             this.ctx.restore();

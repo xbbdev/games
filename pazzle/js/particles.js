@@ -34,7 +34,7 @@ class ParticleEngine {
 
     fireVictoryConfetti(durationMs = 4000) {
         this.init();
-        const colors = ['#ffd700', '#ff007f', '#00e5ff', '#00ff88', '#ff9900', '#b388ff', '#ffffff'];
+        const colors = ['#2563eb', '#d97706', '#16a34a'];
         const pCount = 180;
 
         for (let i = 0; i < pCount; i++) {
