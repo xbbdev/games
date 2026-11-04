@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="uz" data-theme="default">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Pazzle Master - Drag & Drop Mukammal Mozaika</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧩</text></svg>">
+</head>
+<body>
+    <div class="app-container">
+        <!-- TOP NAVBAR -->
+        <header class="navbar">
+            <div class="logo">
+                <div class="logo-icon">🧩</div>
+                <div class="logo-text">
+                    <h1 data-i18n="app_title">PAZZLE MASTER</h1>
+                    <span class="badge" data-i18n="app_subtitle">DRAG & DROP MUKAMMALLIK</span>
+                </div>
+            </div>
+
+            <div class="nav-actions">
+                <!-- Sound Effects Toggle -->
+                <button id="btn-sound" class="icon-btn active" title="Ovoz (FX)" aria-label="Toggle Sound">🔊</button>
+                <!-- Generative Ambient Zen Music Toggle -->
+                <button id="btn-music" class="icon-btn" title="Tinchlantiruvchi musiqa" aria-label="Toggle Music">🎵</button>
+                <!-- Fullscreen Toggle -->
+                <button id="btn-fullscreen" class="icon-btn" title="To'liq ekran" aria-label="Toggle Fullscreen">⛶</button>
+
+                <!-- Theme Switcher -->
+                <select id="theme-select" class="select-dropdown" title="Mavzu">
+                    <option value="default">Cyber Neon</option>
+                    <option value="emerald">Zumrad O'rmon</option>
+                    <option value="sunset">Oltin Quyosh</option>
+                    <option value="royal">Qirol Moviy</option>
+                </select>
+
+                <!-- Language Switcher -->
+                <select id="lang-select" class="select-dropdown" title="Til">
+                    <option value="uz" selected>🇺🇿 O'zbekcha</option>
+                    <option value="en">🇬🇧 English</option>
+                    <option value="ru">🇷🇺 Русский</option>
+                </select>
+            </div>
+        </header>
+
+        <!-- MODE SELECTION TABS -->
+        <nav class="mode-tabs">
+            <button class="mode-tab active" data-mode="jigsaw">
+                <span class="tab-icon">🧩</span>
+                <span data-i18n="tab_jigsaw">Mozaika (Drag & Drop)</span>
+            </button>
+            <button class="mode-tab" data-mode="campaign">
+                <span class="tab-icon">🏆</span>
+                <span data-i18n="tab_campaign">Bosqichlar</span>
+            </button>
+            <button class="mode-tab" data-mode="sliding">
+                <span class="tab-icon">🔲</span>
+                <span data-i18n="tab_sliding">Suriluvchi Pazl</span>
+            </button>
+            <button class="mode-tab" data-mode="swap">
+                <span class="tab-icon">🔄</span>
+                <span data-i18n="tab_swap">Almashtirish</span>
+            </button>
+        </nav>
+
+        <!-- STATS HUD BAR -->
+        <section class="hud-bar">
+            <div class="hud-group">
+                <div class="hud-item">
+                    <div class="hud-icon">🎯</div>
+                    <div class="hud-meta">
+                        <span class="hud-label" data-i18n="hud_level">Rejim</span>
+                        <span id="hud-level-val" class="hud-value highlight">Mozaika</span>
+                    </div>
+                </div>
+
+                <!-- Jigsaw Progress Meter -->
+                <div id="hud-progress-wrap" class="progress-wrap">
+                    <span id="hud-progress-text" class="progress-text">0/16 (0%)</span>
+                    <div class="progress-track">
+                        <div id="hud-progress-fill" class="progress-fill"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="hud-group">
+                <div class="hud-item">
+                    <div class="hud-icon">⚡</div>
+                    <div class="hud-meta">
+                        <span class="hud-label" data-i18n="hud_moves">Qadamlar</span>
+                        <span id="hud-moves-val" class="hud-value">0</span>
+                    </div>
+                </div>
+
+                <div class="hud-item">
+                    <div class="hud-icon">⏱️</div>
+                    <div class="hud-meta">
+                        <span class="hud-label" data-i18n="hud_time">Vaqt</span>
+                        <span id="hud-time-val" class="hud-value">00:00</span>
+                    </div>
+                </div>
+
+                <div class="hud-item" id="hud-stars-group">
+                    <div class="hud-icon">⭐</div>
+                    <div class="hud-meta">
+                        <span class="hud-label" data-i18n="hud_stars">Yulduzlar</span>
+                        <div id="hud-stars" class="hud-stars">
+                            <span>★</span><span>★</span><span>★</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- JIGSAW ADVANCED TOOLBAR (Edge filter, Ghost slider, Tray cleanup) -->
+        <div id="jigsaw-sub-bar" class="jigsaw-toolbar">
+            <div class="slider-group">
+                <span data-i18n="ghost_opacity">👁️ Shaffoflik:</span>
+                <input type="range" id="ghost-opacity-slider" min="0" max="100" value="25">
+                <span id="ghost-opacity-val">25%</span>
+            </div>
+            <button id="btn-edge-filter" class="btn btn-secondary btn-sm" title="Faqat qirra bo'laklarini ko'rsatish">
+                <span data-i18n="btn_edge_filter">🧩 Faqat qirralar</span>
+            </button>
+            <button id="btn-tray-clean" class="btn btn-secondary btn-sm" title="Barcha bo'laklarni javonga yig'ish">
+                <span data-i18n="btn_tray_clean">📥 Javonga yig'ish</span>
+            </button>
+            <button id="btn-tray-left" class="btn btn-secondary btn-sm" title="Javonni chapga surish">◀</button>
+            <button id="btn-tray-right" class="btn btn-secondary btn-sm" title="Javonni o'ngga surish">▶</button>
+        </div>
+
+        <!-- MAIN GAME BOARD CONTAINER -->
+        <main class="game-layout">
+            <div id="board-container" class="board-container">
+                <!-- Injected via JavaScript dynamically -->
+            </div>
+
+            <!-- CONTROLS ACTION BAR -->
+            <div class="controls-bar">
+                <button id="btn-restart" class="btn btn-secondary" title="Qayta boshlash">
+                    <span data-i18n="btn_restart">🔄 Qayta boshlash</span>
+                </button>
+                <button id="btn-hint" class="btn btn-gold" title="Aqlli maslahat">
+                    <span data-i18n="btn_hint">💡 Maslahat</span>
+                </button>
+                <button id="btn-solve" class="btn btn-primary" title="AI avtomatik yechish">
+                    <span data-i18n="btn_solve">🤖 Avto-yechish</span>
+                </button>
+                <button id="btn-preview" class="btn btn-secondary" title="Asl rasmni ko'rish">
+                    <span data-i18n="btn_preview">👁️ Asl rasm</span>
+                </button>
+                <button id="btn-numbers" class="btn btn-secondary" title="Raqamlarni ko'rsatish/yashirish" style="display: none;">
+                    <span data-i18n="btn_numbers">🔢 Raqamlar</span>
+                </button>
+                <button id="btn-undo" class="btn btn-secondary" title="Qadamni bekor qilish" style="display: none;">
+                    <span data-i18n="btn_undo">↩️ Qaytish</span>
+                </button>
+                <button id="btn-image" class="btn btn-secondary" title="Rasm yoki fonni tanlash">
+                    <span data-i18n="btn_image">🖼️ Rasm tanlash</span>
+                </button>
+                <button id="btn-levels-modal" class="btn btn-accent" title="Bosqichlar xaritasi" style="display: none;">
+                    <span data-i18n="btn_levels">🏆 Bosqichlar</span>
+                </button>
+
+                <!-- Free Play Size Selector (2x2 to 8x8) -->
+                <select id="size-select" class="select-dropdown" title="O'lcham">
+                    <option value="2">2x2 (Bolalar uchun - 4 bo'lak)</option>
+                    <option value="3">3x3 (Oson - 9 bo'lak)</option>
+                    <option value="4" selected>4x4 (Klassik - 16 bo'lak)</option>
+                    <option value="5">5x5 (Qiyin - 25 bo'lak)</option>
+                    <option value="6">6x6 (Grossmeyster - 36 bo'lak)</option>
+                    <option value="8">8x8 (Ekstremal Daho - 64 bo'lak)</option>
+                </select>
+            </div>
+        </main>
+    </div>
+
+    <!-- 1. CAMPAIGN LEVEL SELECTOR MODAL -->
+    <div id="level-modal" class="modal-overlay">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3 data-i18n="tab_campaign">🏆 Bosqichlar Xaritasi</h3>
+                <button class="modal-close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="level-select-grid" class="level-grid">
+                    <!-- Injected dynamically -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary modal-close-btn">Yopish</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. ARTWORK PRESETS & UPLOAD MODAL -->
+    <div id="art-modal" class="modal-overlay">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3 data-i18n="modal_choose_art">Pazl uchun rasm tanlang</h3>
+                <button class="modal-close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <label class="upload-box" for="image-upload-input">
+                    <span style="font-size: 32px;">📸</span>
+                    <strong data-i18n="upload_prompt">Oʻz suratingizni yuklang (JPG/PNG)</strong>
+                    <span style="font-size: 11px; color: var(--text-muted);">Kompyuter yoki telefondan istalgan rasmni tanlang</span>
+                    <input type="file" id="image-upload-input" accept="image/*">
+                </label>
+
+                <div id="art-gallery-grid" class="gallery-grid">
+                    <!-- Injected dynamically -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary modal-close-btn">Yopish</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. VICTORY CELEBRATION MODAL -->
+    <div id="victory-modal" class="modal-overlay">
+        <div class="modal-card" style="max-width: 440px;">
+            <div class="modal-body">
+                <div class="victory-content">
+                    <div class="victory-trophy">🏆</div>
+                    <h2 class="victory-title" data-i18n="victory_title" style="color: var(--accent-gold); font-size: 24px; font-weight: 800;">GʻALABA! MUKAMMAL!</h2>
+                    <p style="color: var(--text-secondary);" data-i18n="victory_msg">Pazl muvaffaqiyatli yigʻildi!</p>
+
+                    <div id="victory-stars-box" class="victory-stars">
+                        <span class="star-filled">★</span>
+                        <span class="star-filled">★</span>
+                        <span class="star-filled">★</span>
+                    </div>
+
+                    <div class="victory-stats">
+                        <div class="victory-stat-item">
+                            <span class="hud-label" data-i18n="hud_moves">Qadamlar</span>
+                            <span id="victory-moves-val" class="victory-stat-val">0</span>
+                        </div>
+                        <div class="victory-stat-item">
+                            <span class="hud-label" data-i18n="hud_time">Vaqt</span>
+                            <span id="victory-time-val" class="victory-stat-val">00:00</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer" style="justify-content: center;">
+                <button id="btn-victory-replay" class="btn btn-secondary" data-i18n="victory_replay">Qayta oʻynash</button>
+                <button id="btn-victory-next" class="btn btn-primary" data-i18n="victory_next">Keyingi bosqich ➔</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4. ORIGINAL IMAGE PREVIEW MODAL -->
+    <div id="preview-modal" class="modal-overlay">
+        <div class="modal-card" style="max-width: 520px;">
+            <div class="modal-header">
+                <h3 data-i18n="btn_preview">Asl rasm namunasi</h3>
+                <button class="modal-close-btn">&times;</button>
+            </div>
+            <div class="modal-body" style="align-items: center;">
+                <img id="preview-image-large" alt="Original Art Preview" style="max-width: 100%; border-radius: var(--radius-md); box-shadow: 0 8px 24px rgba(0,0,0,0.5);">
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary modal-close-btn">Yopish</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCRIPTS -->
+    <script src="js/audio.js"></script>
+    <script src="js/art-presets.js"></script>
+    <script src="js/sliding-solver.js"></script>
+    <script src="js/particles.js"></script>
+    <script src="js/sliding-game.js"></script>
+    <script src="js/jigsaw-game.js"></script>
+    <script src="js/swap-game.js"></script>
+    <script src="js/campaign.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
