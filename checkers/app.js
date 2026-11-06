@@ -1,6 +1,6 @@
 /**
  * Shashka (Checkers) Main Application Controller
- * Handles UI interactions, rendering, AI triggers, animations, and sound effects.
+ * Handles 100-Level Campaign, UI interactions, rendering, AI triggers, animations, and sound effects.
  */
 
 (function () {
@@ -16,7 +16,8 @@
     BLACK_MAN,
     BLACK_KING,
     EMPTY,
-    isDarkSquare
+    isDarkSquare,
+    getLevelConfig
   } = window.CheckersEngine;
 
   // Sound Synthesizer
@@ -32,15 +33,23 @@
   // Application State
   const state = {
     game: new CheckersGame(),
-    mode: 'ai', // 'ai' or 'pvp'
-    aiDifficulty: 'medium', // 'easy', 'medium', 'hard'
-    playerColor: PLAYER_WHITE, // human color in vs AI mode
+    mode: 'campaign', // 'campaign', 'ai', 'pvp'
+    aiDifficulty: 'medium', // for free 'ai' mode: 'easy', 'medium', 'hard'
+    playerColor: PLAYER_WHITE,
     isBoardFlipped: false,
     selectedSquare: null, // { r, c }
     validDestinations: [], // array of moves
     hintMove: null, // { from, to }
     isAiThinking: false,
-    historyDisplay: [] // { num, white, black }
+    historyDisplay: [], // { num, white, black }
+
+    // 100-Level Campaign State
+    campaign: {
+      currentLevel: 1,
+      unlockedLevel: 1,
+      stars: {}, // { levelNum: 1..3 }
+      selectedTierTab: 1
+    }
   };
 
   // DOM Elements
@@ -59,7 +68,23 @@
   const historyList = document.getElementById('historyList');
   const turnCounter = document.getElementById('turnCounter');
 
+  // Campaign HUD Elements
+  const campaignBar = document.getElementById('campaignBar');
+  const campaignLevelNum = document.getElementById('campaignLevelNum');
+  const campaignLevelTitle = document.getElementById('campaignLevelTitle');
+  const campaignTierTag = document.getElementById('campaignTierTag');
+  const campaignEloTag = document.getElementById('campaignEloTag');
+  const campaignStarsCount = document.getElementById('campaignStarsCount');
+  const campaignProgressBar = document.getElementById('campaignProgressBar');
+  const campaignProgressPct = document.getElementById('campaignProgressPct');
+  const btnSelectLevel = document.getElementById('btnSelectLevel');
+
+  // Mode Selector Pills
+  const btnModeCampaign = document.getElementById('btnModeCampaign');
+  const btnModeFree = document.getElementById('btnModeFree');
+
   // Top Nav Buttons
+  const btnOpenLevels = document.getElementById('btnOpenLevels');
   const btnNewGame = document.getElementById('btnNewGame');
   const btnUndo = document.getElementById('btnUndo');
   const btnHint = document.getElementById('btnHint');
@@ -77,7 +102,16 @@
   const coordVLeft = document.getElementById('coordVLeft');
   const coordVRight = document.getElementById('coordVRight');
 
-  // Modals
+  // 100-Levels Modal
+  const levelsModal = document.getElementById('levelsModal');
+  const btnCloseLevels = document.getElementById('btnCloseLevels');
+  const modalTotalStars = document.getElementById('modalTotalStars');
+  const modalUnlockedCount = document.getElementById('modalUnlockedCount');
+  const modalRankName = document.getElementById('modalRankName');
+  const tierTabs = document.getElementById('tierTabs');
+  const levelsGrid = document.getElementById('levelsGrid');
+
+  // Settings Modal
   const settingsModal = document.getElementById('settingsModal');
   const btnCloseSettings = document.getElementById('btnCloseSettings');
   const rulesModal = document.getElementById('rulesModal');
@@ -86,7 +120,9 @@
   const winnerTitle = document.getElementById('winnerTitle');
   const winnerSubtitle = document.getElementById('winnerSubtitle');
   const winnerIcon = document.getElementById('winnerIcon');
+  const winnerStars = document.getElementById('winnerStars');
   const btnPlayAgain = document.getElementById('btnPlayAgain');
+  const btnNextLevel = document.getElementById('btnNextLevel');
   const btnCloseWinner = document.getElementById('btnCloseWinner');
 
   // Segmented controls
@@ -99,7 +135,6 @@
 
   /**
    * Draughts notation conversion
-   * row 0..7 -> 1..8, col 0..7 -> a..h
    */
   function toSquareNotation(r, c) {
     const colName = String.fromCharCode(97 + c);
@@ -113,14 +148,24 @@
   }
 
   /**
-   * Initialize settings from LocalStorage if present
+   * Calculate total stars earned in Campaign
    */
-  function loadSavedSettings() {
+  function getTotalStars() {
+    let total = 0;
+    for (const lvl in state.campaign.stars) {
+      total += state.campaign.stars[lvl] || 0;
+    }
+    return total;
+  }
+
+  /**
+   * Load saved campaign & app settings from localStorage
+   */
+  function loadSavedData() {
     try {
       const savedTheme = localStorage.getItem('shashka_theme');
-      if (savedTheme) {
-        setTheme(savedTheme);
-      }
+      if (savedTheme) setTheme(savedTheme);
+
       const savedMode = localStorage.getItem('shashka_mode');
       if (savedMode) state.mode = savedMode;
 
@@ -132,10 +177,31 @@
         state.playerColor = savedColor === 'white' ? PLAYER_WHITE : PLAYER_BLACK;
         state.isBoardFlipped = state.playerColor === PLAYER_BLACK;
       }
+
+      // Campaign data
+      const savedCampaign = localStorage.getItem('shashka_campaign_data');
+      if (savedCampaign) {
+        const parsed = JSON.parse(savedCampaign);
+        if (parsed.currentLevel) state.campaign.currentLevel = Math.max(1, Math.min(100, parsed.currentLevel));
+        if (parsed.unlockedLevel) state.campaign.unlockedLevel = Math.max(1, Math.min(100, parsed.unlockedLevel));
+        if (parsed.stars) state.campaign.stars = parsed.stars;
+      }
     } catch (e) {
       console.warn('LocalStorage error:', e);
     }
+    updateModePillsUI();
+    renderCampaignBar();
     updateSettingsUI();
+  }
+
+  function saveCampaignData() {
+    try {
+      localStorage.setItem('shashka_campaign_data', JSON.stringify({
+        currentLevel: state.campaign.currentLevel,
+        unlockedLevel: state.campaign.unlockedLevel,
+        stars: state.campaign.stars
+      }));
+    } catch (e) {}
   }
 
   function saveSettings() {
@@ -151,10 +217,16 @@
     try {
       localStorage.setItem('shashka_theme', theme);
     } catch (e) {}
-    // Update theme segmented control
     themeSelect.querySelectorAll('.seg-btn').forEach(btn => {
       btn.classList.toggle('active', btn.getAttribute('data-theme') === theme);
     });
+  }
+
+  function updateModePillsUI() {
+    const isCampaign = state.mode === 'campaign';
+    btnModeCampaign.classList.toggle('active', isCampaign);
+    btnModeFree.classList.toggle('active', !isCampaign);
+    campaignBar.classList.toggle('hidden', !isCampaign);
   }
 
   function updateSettingsUI() {
@@ -172,6 +244,9 @@
     if (state.mode === 'pvp') {
       difficultyGroup.style.display = 'none';
       colorGroup.style.display = 'none';
+    } else if (state.mode === 'campaign') {
+      difficultyGroup.style.display = 'none';
+      colorGroup.style.display = 'block';
     } else {
       difficultyGroup.style.display = 'block';
       colorGroup.style.display = 'block';
@@ -179,7 +254,103 @@
   }
 
   /**
-   * Update Coordinate labels around the board based on flip state
+   * Render Campaign Top HUD Bar
+   */
+  function renderCampaignBar() {
+    if (state.mode !== 'campaign') {
+      campaignBar.classList.add('hidden');
+      return;
+    }
+    campaignBar.classList.remove('hidden');
+
+    const cfg = getLevelConfig(state.campaign.currentLevel);
+    campaignLevelNum.textContent = `${cfg.level}-bosqich`;
+    campaignLevelTitle.textContent = cfg.title;
+    campaignTierTag.textContent = cfg.tierName;
+    campaignTierTag.className = 'elo-tag ' + cfg.tierClass;
+    campaignEloTag.textContent = `${cfg.elo} ELO`;
+
+    const starsTotal = getTotalStars();
+    campaignStarsCount.textContent = `⭐ ${starsTotal} / 300`;
+
+    const progressPct = Math.round((state.campaign.unlockedLevel / 100) * 100);
+    campaignProgressBar.style.width = `${progressPct}%`;
+    campaignProgressPct.textContent = `${progressPct}% (${state.campaign.unlockedLevel}/100)`;
+  }
+
+  /**
+   * Render the 100 Levels Grid Modal
+   */
+  function openLevelsModal(tier = 1) {
+    state.campaign.selectedTierTab = tier;
+
+    // Header stats
+    const totalStars = getTotalStars();
+    modalTotalStars.textContent = `⭐ ${totalStars} / 300`;
+    modalUnlockedCount.textContent = `${state.campaign.unlockedLevel} / 100`;
+
+    const currentCfg = getLevelConfig(state.campaign.currentLevel);
+    modalRankName.textContent = currentCfg.tierName;
+
+    // Update active tab buttons
+    tierTabs.querySelectorAll('.tier-tab-btn').forEach(btn => {
+      const t = parseInt(btn.getAttribute('data-tier'), 10);
+      btn.classList.toggle('active', t === tier);
+    });
+
+    // Render 20 level cards for the selected tier
+    const startLvl = (tier - 1) * 20 + 1;
+    const endLvl = tier * 20;
+
+    levelsGrid.innerHTML = '';
+
+    for (let lvl = startLvl; lvl <= endLvl; lvl++) {
+      const cfg = getLevelConfig(lvl);
+      const isUnlocked = lvl <= state.campaign.unlockedLevel;
+      const isCurrent = lvl === state.campaign.currentLevel;
+      const stars = state.campaign.stars[lvl] || 0;
+
+      const card = document.createElement('div');
+      card.className = `level-card ${cfg.tierClass}` + (isUnlocked ? '' : ' locked') + (isCurrent ? ' current-playing' : '');
+
+      let starsHtml = '';
+      if (isUnlocked) {
+        for (let s = 1; s <= 3; s++) {
+          if (s <= stars) {
+            starsHtml += '⭐';
+          } else {
+            starsHtml += '☆';
+          }
+        }
+      } else {
+        starsHtml = '🔒';
+      }
+
+      card.innerHTML = `
+        <div class="level-num-circle">${lvl}</div>
+        <div class="level-card-name">${cfg.title.replace(`${lvl}-bosqich: `, '')}</div>
+        <div class="level-card-elo">${cfg.elo} ELO</div>
+        <div class="level-card-stars ${stars === 0 ? 'empty' : ''}">${starsHtml}</div>
+      `;
+
+      if (isUnlocked) {
+        card.addEventListener('click', () => {
+          state.campaign.currentLevel = lvl;
+          saveCampaignData();
+          renderCampaignBar();
+          levelsModal.classList.remove('active');
+          startNewGame();
+        });
+      }
+
+      levelsGrid.appendChild(card);
+    }
+
+    levelsModal.classList.add('active');
+  }
+
+  /**
+   * Update Coordinate labels around board
    */
   function updateCoordinates() {
     const cols = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
@@ -204,7 +375,6 @@
     const forcedPieces = state.game.getForcedPieces();
     const isCaptureForced = state.game.isCaptureForced();
 
-    // Show or hide mandatory capture alert
     const isCurrentTurnHuman = state.mode === 'pvp' || state.game.turn === state.playerColor;
     if (isCaptureForced && isCurrentTurnHuman && state.game.state === 'active') {
       forcedAlert.classList.remove('hidden');
@@ -212,7 +382,6 @@
       forcedAlert.classList.add('hidden');
     }
 
-    // Determine row and column iteration order based on board flip
     const rowIndices = state.isBoardFlipped
       ? [0, 1, 2, 3, 4, 5, 6, 7]
       : [7, 6, 5, 4, 3, 2, 1, 0];
@@ -308,15 +477,28 @@
     playerWhiteCard.classList.toggle('active-turn', isWhiteTurn && state.game.state === 'active');
     playerBlackCard.classList.toggle('active-turn', !isWhiteTurn && state.game.state === 'active');
 
-    // Update names & roles
-    if (state.mode === 'ai') {
+    if (state.mode === 'campaign') {
+      const cfg = getLevelConfig(state.campaign.currentLevel);
       if (state.playerColor === PLAYER_WHITE) {
         playerWhiteTitle.textContent = "Siz (O'yinchi)";
         playerWhiteRole.textContent = "Oqlar";
-        playerBlackTitle.textContent = `Kompyuter (${getDiffName(state.aiDifficulty)})`;
+        playerBlackTitle.textContent = `Bot (${cfg.level}-bosqich)`;
+        playerBlackRole.textContent = `${cfg.elo} ELO • ${cfg.tierName}`;
+      } else {
+        playerWhiteTitle.textContent = `Bot (${cfg.level}-bosqich)`;
+        playerWhiteRole.textContent = `${cfg.elo} ELO • ${cfg.tierName}`;
+        playerBlackTitle.textContent = "Siz (O'yinchi)";
+        playerBlackRole.textContent = "Qoralar";
+      }
+    } else if (state.mode === 'ai') {
+      const diffName = state.aiDifficulty === 'easy' ? 'Oson' : (state.aiDifficulty === 'medium' ? "O'rtacha" : 'Qiyin');
+      if (state.playerColor === PLAYER_WHITE) {
+        playerWhiteTitle.textContent = "Siz (O'yinchi)";
+        playerWhiteRole.textContent = "Oqlar";
+        playerBlackTitle.textContent = `Kompyuter (${diffName})`;
         playerBlackRole.textContent = "Qoralar (Bot)";
       } else {
-        playerWhiteTitle.textContent = `Kompyuter (${getDiffName(state.aiDifficulty)})`;
+        playerWhiteTitle.textContent = `Kompyuter (${diffName})`;
         playerWhiteRole.textContent = "Oqlar (Bot)";
         playerBlackTitle.textContent = "Siz (O'yinchi)";
         playerBlackRole.textContent = "Qoralar";
@@ -328,12 +510,11 @@
       playerBlackRole.textContent = "Qoralar";
     }
 
-    // Pill texts
     const whitePill = playerWhiteCard.querySelector('.turn-pill');
     const blackPill = playerBlackCard.querySelector('.turn-pill');
     if (state.game.state !== 'active') {
-      whitePill.textContent = 'O\'yin tugadi';
-      blackPill.textContent = 'O\'yin tugadi';
+      whitePill.textContent = "O'yin tugadi";
+      blackPill.textContent = "O'yin tugadi";
     } else if (isWhiteTurn) {
       whitePill.textContent = 'Yurish navbati';
       blackPill.textContent = 'Kutmoqda';
@@ -345,12 +526,6 @@
     turnCounter.textContent = `Yurish: ${state.game.turnCount}`;
   }
 
-  function getDiffName(diff) {
-    if (diff === 'easy') return 'Oson';
-    if (diff === 'medium') return "O'rtacha";
-    return 'Qiyin';
-  }
-
   /**
    * Handle Board Square Click
    */
@@ -359,8 +534,8 @@
       return;
     }
 
-    // Check if it's the player's turn in AI mode
-    if (state.mode === 'ai' && state.game.turn !== state.playerColor) {
+    // Check if it's the player's turn against Bot
+    if (state.mode !== 'pvp' && state.game.turn !== state.playerColor) {
       return;
     }
 
@@ -372,7 +547,6 @@
 
     // Case 1: Mid multi-jump in progress
     if (state.game.multiJump) {
-      // Must move the active piece to one of its valid destinations
       const validMoves = state.game.getValidMoves();
       const chosenMove = validMoves.find(m => m.to.r === r && m.to.c === c);
       if (chosenMove) {
@@ -401,12 +575,7 @@
         sound.playMove();
         renderBoard();
       } else {
-        // Piece cannot move (e.g. captures are forced elsewhere or piece is blocked)
         sound.playInvalid();
-        if (state.game.isCaptureForced()) {
-          forcedAlert.classList.add('pulse-once');
-          setTimeout(() => forcedAlert.classList.remove('pulse-once'), 600);
-        }
       }
       return;
     }
@@ -423,7 +592,6 @@
    * Execute human move
    */
   function executeHumanMove(fromR, fromC, toR, toC) {
-    const isCapture = state.validDestinations.some(m => m.to.r === toR && m.to.c === toC && m.captured);
     const result = state.game.makeMove(fromR, fromC, toR, toC);
 
     if (!result.success) {
@@ -456,7 +624,6 @@
       if (result.gameOver) {
         handleGameOver(result.winner);
       } else {
-        // Check if AI should move next
         checkTriggerAI();
       }
     }
@@ -479,8 +646,6 @@
       notation = formatMoveNotation(moveRecord.from, moveRecord.to, moveRecord.captured && moveRecord.captured.length > 0);
     }
 
-    // Is it white move or black move?
-    // Note: state.game.turn has already flipped to next player!
     const wasWhite = state.game.turn === PLAYER_BLACK;
 
     if (wasWhite) {
@@ -516,27 +681,32 @@
   }
 
   /**
-   * Trigger AI move if in AI mode and it's AI's turn
+   * Trigger AI move if in campaign or AI mode
    */
   function checkTriggerAI() {
-    if (state.mode !== 'ai' || state.game.state !== 'active') return;
+    if (state.mode === 'pvp' || state.game.state !== 'active') return;
     if (state.game.turn === state.playerColor) return;
 
     state.isAiThinking = true;
     renderBoard();
 
-    // Natural delay so human can absorb previous move (350-500ms)
+    // Natural calculation delay
     setTimeout(() => {
-      const bestMove = AI.getBestMove(state.game, state.aiDifficulty);
+      let bestMove = null;
+      if (state.mode === 'campaign') {
+        bestMove = AI.getBestMoveForLevel(state.game, state.campaign.currentLevel);
+      } else {
+        bestMove = AI.getBestMove(state.game, state.aiDifficulty);
+      }
+
       if (!bestMove) {
         state.isAiThinking = false;
         renderBoard();
         return;
       }
 
-      // Execute AI move steps with animation
       executeAIMoveSteps(bestMove.steps, 0);
-    }, 450);
+    }, 400);
   }
 
   /**
@@ -563,12 +733,10 @@
     renderBoard();
 
     if (result.nextCaptureAvailable) {
-      // Next jump step after slight delay
       setTimeout(() => {
         executeAIMoveSteps(steps, index + 1);
       }, 350);
     } else {
-      // Finished turn
       addMoveToHistory(state.game.lastMove);
       state.isAiThinking = false;
       renderBoard();
@@ -580,44 +748,98 @@
   }
 
   /**
-   * Game Over handler
+   * Game Over handler with 100-Level Campaign victory and stars progression
    */
   function handleGameOver(winner) {
+    winnerStars.innerHTML = '';
+
     if (winner === 'draw' || state.game.state === 'draw') {
       winnerIcon.textContent = '🤝';
       winnerTitle.textContent = 'Durang!';
-      winnerSubtitle.textContent = 'O\'yin durang natija bilan yakunlandi.';
-    } else if (winner === PLAYER_WHITE) {
-      const isHuman = state.mode === 'pvp' || state.playerColor === PLAYER_WHITE;
-      if (isHuman) {
-        winnerIcon.textContent = '🏆';
-        winnerTitle.textContent = 'G\'alaba! Tabriklaymiz!';
-        winnerSubtitle.textContent = 'Oqlar ajoyib g\'alabaga erishdi!';
-        sound.playWin();
+      winnerSubtitle.textContent = "O'yin durang natija bilan yakunlandi.";
+      btnNextLevel.style.display = 'none';
+    } else if (winner === state.playerColor) {
+      // Human WON!
+      winnerIcon.textContent = '🏆';
+      sound.playWin();
+
+      if (state.mode === 'campaign') {
+        const curLvl = state.campaign.currentLevel;
+        const cfg = getLevelConfig(curLvl);
+
+        // Calculate stars
+        const counts = state.game.getPieceCount();
+        const playerRemaining = state.playerColor === PLAYER_WHITE ? counts.white : counts.black;
+
+        let starsEarned = 1; // 1 star for victory
+        if (playerRemaining >= 6 || state.game.turnCount <= 32) {
+          starsEarned = 3;
+        } else if (playerRemaining >= 4) {
+          starsEarned = 2;
+        }
+
+        // Save stars
+        const prevStars = state.campaign.stars[curLvl] || 0;
+        state.campaign.stars[curLvl] = Math.max(prevStars, starsEarned);
+
+        // Unlock next level if currently at highest unlocked
+        if (state.campaign.unlockedLevel === curLvl && curLvl < 100) {
+          state.campaign.unlockedLevel = curLvl + 1;
+        }
+        saveCampaignData();
+        renderCampaignBar();
+
+        winnerTitle.textContent = `Tabriklaymiz! ${curLvl}-bosqich Zabt Etildi!`;
+        winnerSubtitle.textContent = `${cfg.title} (${cfg.elo} ELO) ustidan to'liq g'alaba qozondingiz!`;
+
+        // Render animated stars
+        let starsHtml = '';
+        for (let s = 1; s <= 3; s++) {
+          if (s <= starsEarned) {
+            starsHtml += `<span class="star-pop" style="animation-delay: ${s * 0.2}s">⭐</span>`;
+          } else {
+            starsHtml += '<span class="star-empty">☆</span>';
+          }
+        }
+        winnerStars.innerHTML = starsHtml;
+
+        if (curLvl < 100) {
+          btnNextLevel.style.display = 'inline-flex';
+          btnNextLevel.onclick = () => {
+            winnerModal.classList.remove('active');
+            state.campaign.currentLevel = curLvl + 1;
+            saveCampaignData();
+            renderCampaignBar();
+            startNewGame();
+          };
+        } else {
+          btnNextLevel.style.display = 'none';
+          winnerSubtitle.textContent = "SIZ 100-BOSQICHNI YUTIB, MUTLAQ GROSSMEYSTER BO'LDINGIZ! 👑";
+        }
       } else {
-        winnerIcon.textContent = '🤖';
-        winnerTitle.textContent = 'Kompyuter g\'alaba qozondi!';
-        winnerSubtitle.textContent = 'Oqlar (Bot) bu safar ustun keldi.';
-        sound.playLose();
+        winnerTitle.textContent = "G'alaba! Tabriklaymiz!";
+        winnerSubtitle.textContent = "Siz ajoyib g'alabaga erishdingiz!";
+        btnNextLevel.style.display = 'none';
       }
-    } else if (winner === PLAYER_BLACK) {
-      const isHuman = state.mode === 'pvp' || state.playerColor === PLAYER_BLACK;
-      if (isHuman) {
-        winnerIcon.textContent = '🏆';
-        winnerTitle.textContent = 'G\'alaba! Tabriklaymiz!';
-        winnerSubtitle.textContent = 'Qoralar ajoyib g\'alabaga erishdi!';
-        sound.playWin();
+    } else {
+      // Bot WON
+      winnerIcon.textContent = '🤖';
+      sound.playLose();
+      btnNextLevel.style.display = 'none';
+
+      if (state.mode === 'campaign') {
+        const cfg = getLevelConfig(state.campaign.currentLevel);
+        winnerTitle.textContent = 'Mag\'lubiyat!';
+        winnerSubtitle.textContent = `${cfg.title} (${cfg.elo} ELO) bu safar ustun keldi. Qayta urinib ko'ring!`;
       } else {
-        winnerIcon.textContent = '🤖';
         winnerTitle.textContent = 'Kompyuter g\'alaba qozondi!';
-        winnerSubtitle.textContent = 'Qoralar (Bot) bu safar ustun keldi.';
-        sound.playLose();
+        winnerSubtitle.textContent = 'Bu safar bot ustun keldi. Yana bir urinib ko\'ring!';
       }
     }
 
     setTimeout(() => {
       winnerModal.classList.add('active');
-    }, 400);
+    }, 450);
   }
 
   /**
@@ -633,9 +855,10 @@
     renderHistory();
     updateCoordinates();
     renderBoard();
+    renderCampaignBar();
 
-    // If human selected Black, AI (White) makes the first move!
-    if (state.mode === 'ai' && state.playerColor === PLAYER_BLACK) {
+    // If human selected Black, Bot (White) makes the first move!
+    if (state.mode !== 'pvp' && state.playerColor === PLAYER_BLACK) {
       checkTriggerAI();
     }
   }
@@ -646,8 +869,7 @@
   function undoMove() {
     if (state.isAiThinking) return;
 
-    if (state.mode === 'ai') {
-      // In AI mode, undo 2 plies if AI moved, to bring turn back to human
+    if (state.mode !== 'pvp') {
       if (state.game.history.length === 0) return;
 
       if (state.game.turn === state.playerColor) {
@@ -663,7 +885,6 @@
         }
       }
     } else {
-      // In PvP mode, undo 1 turn
       if (!state.game.undo()) return;
       if (state.historyDisplay.length > 0) {
         const last = state.historyDisplay[state.historyDisplay.length - 1];
@@ -689,8 +910,8 @@
   function showHint() {
     if (state.game.state !== 'active' || state.isAiThinking) return;
 
-    // AI finds the best move for current player
-    const bestMove = AI.getBestMove(state.game, 'hard');
+    // Use Level 95 Grandmaster search for hints
+    const bestMove = AI.getBestMoveForLevel(state.game, 95);
     if (!bestMove) return;
 
     const firstStep = bestMove.steps[0];
@@ -747,6 +968,45 @@
       }
     });
 
+    // 100-Level Modal Listeners
+    btnOpenLevels.addEventListener('click', () => {
+      const curTier = Math.ceil(state.campaign.currentLevel / 20);
+      openLevelsModal(curTier);
+    });
+
+    btnSelectLevel.addEventListener('click', () => {
+      const curTier = Math.ceil(state.campaign.currentLevel / 20);
+      openLevelsModal(curTier);
+    });
+
+    btnCloseLevels.addEventListener('click', () => {
+      levelsModal.classList.remove('active');
+    });
+
+    tierTabs.addEventListener('click', e => {
+      const btn = e.target.closest('.tier-tab-btn');
+      if (!btn) return;
+      const tier = parseInt(btn.getAttribute('data-tier'), 10);
+      openLevelsModal(tier);
+    });
+
+    // Mode Selector Pills in Navbar
+    btnModeCampaign.addEventListener('click', () => {
+      state.mode = 'campaign';
+      updateModePillsUI();
+      renderCampaignBar();
+      updateSettingsUI();
+      startNewGame();
+    });
+
+    btnModeFree.addEventListener('click', () => {
+      state.mode = 'ai';
+      updateModePillsUI();
+      renderCampaignBar();
+      updateSettingsUI();
+      startNewGame();
+    });
+
     // Settings Modal
     btnSettings.addEventListener('click', () => {
       updateSettingsUI();
@@ -756,6 +1016,8 @@
     btnCloseSettings.addEventListener('click', () => {
       settingsModal.classList.remove('active');
       saveSettings();
+      updateModePillsUI();
+      renderCampaignBar();
       startNewGame();
     });
 
@@ -769,18 +1031,19 @@
     });
 
     // Modal background close
-    [settingsModal, rulesModal].forEach(modal => {
+    [settingsModal, rulesModal, levelsModal].forEach(modal => {
       modal.addEventListener('click', e => {
         if (e.target === modal) modal.classList.remove('active');
       });
     });
 
-    // Mode Selector
+    // Settings Mode Selector
     modeSelect.addEventListener('click', e => {
       const btn = e.target.closest('.seg-btn');
       if (!btn) return;
       state.mode = btn.getAttribute('data-mode');
       updateSettingsUI();
+      updateModePillsUI();
     });
 
     // Difficulty Selector
@@ -819,19 +1082,19 @@
       } else if (e.key === 'Escape') {
         settingsModal.classList.remove('active');
         rulesModal.classList.remove('active');
+        levelsModal.classList.remove('active');
         winnerModal.classList.remove('active');
       }
     });
   }
 
   // Initialization
-  loadSavedSettings();
+  loadSavedData();
   setupEventListeners();
   updateCoordinates();
   renderBoard();
 
-  // If human plays Black initially, trigger AI first move
-  if (state.mode === 'ai' && state.playerColor === PLAYER_BLACK) {
+  if (state.mode !== 'pvp' && state.playerColor === PLAYER_BLACK) {
     checkTriggerAI();
   }
 })();

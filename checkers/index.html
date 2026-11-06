@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Shashka — O'zbekcha / Ruscha Qoidalar</title>
+  <title>Shashka — 100 Darajali Kampaniya & Erkin O'yin</title>
   <link rel="stylesheet" href="style.css">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>👑</text></svg>">
 </head>
@@ -15,11 +15,24 @@
       <div class="brand-icon">👑</div>
       <div>
         <h1 class="brand-title">SHASHKA</h1>
-        <div class="brand-subtitle">O'zbekcha / Ruscha Qoidalar</div>
+        <div class="brand-subtitle">100 Daraja • O'zbekcha / Ruscha</div>
       </div>
     </div>
 
+    <!-- Mode Selector Pills: 100 Daraja vs Erkin O'yin -->
+    <div class="mode-toggle-wrap">
+      <button id="btnModeCampaign" class="mode-pill active" title="1-bosqichdan 100-bosqichgacha kampaniya">
+        <span>🏆</span> 100 Daraja
+      </button>
+      <button id="btnModeFree" class="mode-pill" title="Erkin o'yin yoki 2 o'yinchi">
+        <span>⚔️</span> Erkin o'yin
+      </button>
+    </div>
+
     <nav class="nav-actions">
+      <button id="btnOpenLevels" class="btn" title="100 ta daraja xaritasi">
+        <span>🗺️</span> Bosqichlar
+      </button>
       <button id="btnNewGame" class="btn btn-primary" title="Yangi o'yin boshlash">
         <span>🔄</span> Yangi o'yin
       </button>
@@ -41,6 +54,39 @@
     </nav>
   </header>
 
+  <!-- 100-Level Campaign HUD Banner -->
+  <div id="campaignBar" class="campaign-bar">
+    <div class="campaign-info">
+      <div id="campaignLevelBadge" class="level-badge-large">
+        <span>🔰</span> <span id="campaignLevelNum">1-bosqich</span>
+      </div>
+      <div class="campaign-details">
+        <div id="campaignLevelTitle" class="campaign-level-title">1-bosqich: Birinchi qadam</div>
+        <div class="campaign-level-sub">
+          <span id="campaignTierTag" class="elo-tag">Boshlang'ich</span>
+          <span id="campaignEloTag" class="elo-tag">400 ELO</span>
+          <span id="campaignStarsCount" style="color: #ffd700; font-weight: 700;">⭐ 0 / 300</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="campaign-progress-wrap">
+      <div class="progress-header">
+        <span>100 Daraja taraqqiyoti</span>
+        <span id="campaignProgressPct">1%</span>
+      </div>
+      <div class="progress-bar-bg">
+        <div id="campaignProgressBar" class="progress-bar-fill" style="width: 1%;"></div>
+      </div>
+    </div>
+
+    <div class="campaign-actions">
+      <button id="btnSelectLevel" class="btn btn-primary" title="Bosqichlar ro'yxatini ochish">
+        <span>🗺️</span> Darajani tanlash
+      </button>
+    </div>
+  </div>
+
   <!-- Main Game Container -->
   <main class="main-layout">
     
@@ -54,7 +100,7 @@
             <span>♟</span>
           </div>
           <div class="player-names-wrap">
-            <div id="playerBlackTitle" class="player-title">Kompyuter</div>
+            <div id="playerBlackTitle" class="player-title">Kompyuter (1-daraja)</div>
             <div id="playerBlackRole" class="player-role">Qoralar (Bot)</div>
             <span class="turn-pill">Kutmoqda</span>
           </div>
@@ -81,7 +127,7 @@
             <span>♙</span>
           </div>
           <div class="player-names-wrap">
-            <div id="playerWhiteTitle" class="player-title">Siz (O'yinchi 1)</div>
+            <div id="playerWhiteTitle" class="player-title">Siz (O'yinchi)</div>
             <div id="playerWhiteRole" class="player-role">Oqlar</div>
             <span class="turn-pill">Sizning navbatingiz</span>
           </div>
@@ -152,6 +198,45 @@
 
   </main>
 
+  <!-- 100 Levels Selection Modal -->
+  <div id="levelsModal" class="modal-overlay">
+    <div class="modal-dialog levels-modal-dialog">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <h2 class="modal-title" style="margin-bottom: 0; border-bottom: none; padding-bottom: 0;">
+          <span>🏆</span> 100 Darajali Shashka Kampaniyasi
+        </h2>
+        <button id="btnCloseLevels" class="btn btn-icon">✕</button>
+      </div>
+
+      <div class="levels-header-stats">
+        <div>
+          <span style="color: var(--text-muted); font-size: 0.8rem;">Jami yulduzlar:</span>
+          <strong id="modalTotalStars" style="color: #ffd700; margin-left: 6px; font-size: 1.1rem;">⭐ 0 / 300</strong>
+        </div>
+        <div>
+          <span style="color: var(--text-muted); font-size: 0.8rem;">Ochiq bosqichlar:</span>
+          <strong id="modalUnlockedCount" style="color: var(--accent-gold); margin-left: 6px; font-size: 1.1rem;">1 / 100</strong>
+        </div>
+        <div>
+          <span style="color: var(--text-muted); font-size: 0.8rem;">Darajangiz:</span>
+          <strong id="modalRankName" style="color: #48cae4; margin-left: 6px; font-size: 1.1rem;">Boshlang'ich</strong>
+        </div>
+      </div>
+
+      <!-- Tier Filter Tabs -->
+      <div class="tier-tabs" id="tierTabs">
+        <button class="tier-tab-btn active" data-tier="1">🥉 1 - 20 (Boshlang'ich)</button>
+        <button class="tier-tab-btn" data-tier="2">🥈 21 - 40 (Havaskor)</button>
+        <button class="tier-tab-btn" data-tier="3">🥇 41 - 60 (Tajribali)</button>
+        <button class="tier-tab-btn" data-tier="4">💎 61 - 80 (Usta)</button>
+        <button class="tier-tab-btn" data-tier="5">👑 81 - 100 (Grossmeyster)</button>
+      </div>
+
+      <!-- 20 Level Cards Grid for current tier -->
+      <div class="levels-grid" id="levelsGrid"></div>
+    </div>
+  </div>
+
   <!-- Settings Modal -->
   <div id="settingsModal" class="modal-overlay">
     <div class="modal-dialog">
@@ -160,13 +245,14 @@
       <div class="setting-group">
         <label class="setting-label">O'yin Rejimi</label>
         <div class="segmented-control" id="modeSelect">
-          <button class="seg-btn active" data-mode="ai">🤖 Botga qarshi</button>
+          <button class="seg-btn active" data-mode="campaign">🏆 100 Daraja (Kampaniya)</button>
+          <button class="seg-btn" data-mode="ai">🤖 Botga qarshi (Erkin)</button>
           <button class="seg-btn" data-mode="pvp">👥 2 O'yinchi (Do'st bilan)</button>
         </div>
       </div>
 
       <div class="setting-group" id="difficultyGroup">
-        <label class="setting-label">Bot Qiyinligi</label>
+        <label class="setting-label">Erkin O'yinda Bot Qiyinligi</label>
         <div class="segmented-control" id="diffSelect">
           <button class="seg-btn" data-diff="easy">Oson</button>
           <button class="seg-btn active" data-diff="medium">O'rtacha</button>
@@ -232,13 +318,20 @@
     <div class="modal-dialog winner-dialog">
       <div id="winnerIcon" class="winner-icon">🏆</div>
       <h2 id="winnerTitle" class="winner-title">Tabriklaymiz!</h2>
+      
+      <!-- Stars display for campaign levels -->
+      <div id="winnerStars" class="victory-stars"></div>
+      
       <p id="winnerSubtitle" class="winner-subtitle">Oqlar g'alaba qozondi!</p>
       
-      <div style="display: flex; gap: 10px; justify-content: center; margin-top: 20px;">
-        <button id="btnPlayAgain" class="btn btn-primary" style="padding: 12px 28px; font-size: 1rem;">
+      <div style="display: flex; gap: 10px; justify-content: center; margin-top: 20px; flex-wrap: wrap;">
+        <button id="btnNextLevel" class="btn btn-primary" style="padding: 12px 24px; font-size: 1rem;">
+          <span>➡️</span> Keyingi bosqich
+        </button>
+        <button id="btnPlayAgain" class="btn" style="padding: 12px 20px; font-size: 1rem;">
           <span>🔄</span> Qayta o'ynash
         </button>
-        <button id="btnCloseWinner" class="btn" style="padding: 12px 20px;">
+        <button id="btnCloseWinner" class="btn" style="padding: 12px 18px;">
           Doskaga qarash
         </button>
       </div>
