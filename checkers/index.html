@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shashka — O'zbekcha / Ruscha Qoidalar</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>👑</text></svg>">
+</head>
+<body data-theme="classic">
+
+  <!-- Top Navigation Header -->
+  <header class="navbar">
+    <div class="brand">
+      <div class="brand-icon">👑</div>
+      <div>
+        <h1 class="brand-title">SHASHKA</h1>
+        <div class="brand-subtitle">O'zbekcha / Ruscha Qoidalar</div>
+      </div>
+    </div>
+
+    <nav class="nav-actions">
+      <button id="btnNewGame" class="btn btn-primary" title="Yangi o'yin boshlash">
+        <span>🔄</span> Yangi o'yin
+      </button>
+      <button id="btnUndo" class="btn" title="Yurishni qaytarish">
+        <span>↩️</span> Qaytarish
+      </button>
+      <button id="btnHint" class="btn" title="Sun'iy intellektdan maslahat olish">
+        <span>💡</span> Maslahat
+      </button>
+      <button id="btnSound" class="btn btn-icon" title="Ovozni yoqish / o'chirish">
+        <span id="soundIcon">🔊</span>
+      </button>
+      <button id="btnSettings" class="btn btn-icon" title="Sozlamalar">
+        <span>⚙️</span>
+      </button>
+      <button id="btnRules" class="btn btn-icon" title="O'yin qoidalari">
+        <span>📜</span>
+      </button>
+    </nav>
+  </header>
+
+  <!-- Main Game Container -->
+  <main class="main-layout">
+    
+    <!-- Left Sidebar: Player Info & Status -->
+    <aside class="left-panel">
+      
+      <!-- Player Black Card -->
+      <div id="playerBlackCard" class="player-card">
+        <div class="player-info">
+          <div class="player-avatar-preview black-preview">
+            <span>♟</span>
+          </div>
+          <div class="player-names-wrap">
+            <div id="playerBlackTitle" class="player-title">Kompyuter</div>
+            <div id="playerBlackRole" class="player-role">Qoralar (Bot)</div>
+            <span class="turn-pill">Kutmoqda</span>
+          </div>
+        </div>
+        <div class="player-stats">
+          <div id="blackPiecesCount" class="pieces-count">12</div>
+          <div class="kings-count"><span>👑</span> <span id="blackKingsCount">0</span></div>
+        </div>
+      </div>
+
+      <!-- Mandatory Capture Alert -->
+      <div id="forcedAlert" class="alert-banner hidden">
+        <span>⚠️</span>
+        <div>
+          <strong>Urish majburiy!</strong>
+          <div style="font-size: 0.78rem; opacity: 0.9;">Raqib shashkasini urishingiz shart</div>
+        </div>
+      </div>
+
+      <!-- Player White Card -->
+      <div id="playerWhiteCard" class="player-card active-turn">
+        <div class="player-info">
+          <div class="player-avatar-preview white-preview">
+            <span>♙</span>
+          </div>
+          <div class="player-names-wrap">
+            <div id="playerWhiteTitle" class="player-title">Siz (O'yinchi 1)</div>
+            <div id="playerWhiteRole" class="player-role">Oqlar</div>
+            <span class="turn-pill">Sizning navbatingiz</span>
+          </div>
+        </div>
+        <div class="player-stats">
+          <div id="whitePiecesCount" class="pieces-count">12</div>
+          <div class="kings-count"><span>👑</span> <span id="whiteKingsCount">0</span></div>
+        </div>
+      </div>
+
+    </aside>
+
+    <!-- Center: The Checkers Board -->
+    <section class="board-wrapper">
+      <div class="board-container">
+        <!-- Coordinate labels around board -->
+        <div id="coordHTop" class="coord-h-top">
+          <span>A</span><span>B</span><span>C</span><span>D</span><span>E</span><span>F</span><span>G</span><span>H</span>
+        </div>
+        <div id="coordVLeft" class="coord-v-left">
+          <span>8</span><span>7</span><span>6</span><span>5</span><span>4</span><span>3</span><span>2</span><span>1</span>
+        </div>
+        <div id="coordVRight" class="coord-v-right">
+          <span>8</span><span>7</span><span>6</span><span>5</span><span>4</span><span>3</span><span>2</span><span>1</span>
+        </div>
+        <div id="coordHBottom" class="coord-h-bottom">
+          <span>A</span><span>B</span><span>C</span><span>D</span><span>E</span><span>F</span><span>G</span><span>H</span>
+        </div>
+
+        <!-- 8x8 Grid of Squares -->
+        <div id="board" class="checkers-board"></div>
+      </div>
+    </section>
+
+    <!-- Right Sidebar: History & Quick Tools -->
+    <aside class="right-panel">
+      
+      <!-- Move History Panel -->
+      <div class="panel-card">
+        <div class="panel-header">
+          <span class="panel-title"><span>📋</span> Tarix</span>
+          <span id="turnCounter" style="font-size: 0.8rem; color: var(--text-muted);">Yurish: 1</span>
+        </div>
+        <div id="historyList" class="history-list">
+          <!-- Filled dynamically -->
+        </div>
+      </div>
+
+      <!-- Quick Action Grid -->
+      <div class="panel-card">
+        <div class="panel-header">
+          <span class="panel-title"><span>⚡</span> Harakatlar</span>
+        </div>
+        <div class="action-grid">
+          <button id="btnFlip" class="btn" style="width: 100%;">
+            <span>🔃</span> Burish
+          </button>
+          <button id="btnOfferDraw" class="btn" style="width: 100%;">
+            <span>🤝</span> Durang
+          </button>
+          <button id="btnResign" class="btn" style="width: 100%; grid-column: span 2;">
+            <span>🏳️</span> Taslim bo'lish
+          </button>
+        </div>
+      </div>
+
+    </aside>
+
+  </main>
+
+  <!-- Settings Modal -->
+  <div id="settingsModal" class="modal-overlay">
+    <div class="modal-dialog">
+      <h2 class="modal-title"><span>⚙️</span> O'yin Sozlamalari</h2>
+      
+      <div class="setting-group">
+        <label class="setting-label">O'yin Rejimi</label>
+        <div class="segmented-control" id="modeSelect">
+          <button class="seg-btn active" data-mode="ai">🤖 Botga qarshi</button>
+          <button class="seg-btn" data-mode="pvp">👥 2 O'yinchi (Do'st bilan)</button>
+        </div>
+      </div>
+
+      <div class="setting-group" id="difficultyGroup">
+        <label class="setting-label">Bot Qiyinligi</label>
+        <div class="segmented-control" id="diffSelect">
+          <button class="seg-btn" data-diff="easy">Oson</button>
+          <button class="seg-btn active" data-diff="medium">O'rtacha</button>
+          <button class="seg-btn" data-diff="hard">Qiyin</button>
+        </div>
+      </div>
+
+      <div class="setting-group" id="colorGroup">
+        <label class="setting-label">Sizning Rangingiz</label>
+        <div class="segmented-control" id="colorSelect">
+          <button class="seg-btn active" data-color="white">Oqlar (Birinchi yurish)</button>
+          <button class="seg-btn" data-color="black">Qoralar</button>
+        </div>
+      </div>
+
+      <div class="setting-group">
+        <label class="setting-label">Doska Mavzusi</label>
+        <div class="segmented-control" id="themeSelect">
+          <button class="seg-btn active" data-theme="classic">Yog'och (Klassik)</button>
+          <button class="seg-btn" data-theme="luxury">Qorong'u (Dark)</button>
+          <button class="seg-btn" data-theme="modern">Zamonaviy (Emerald)</button>
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; margin-top: 20px;">
+        <button id="btnCloseSettings" class="btn btn-primary" style="padding: 10px 24px;">
+          Saqlash va Yopish
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Rules Modal -->
+  <div id="rulesModal" class="modal-overlay">
+    <div class="modal-dialog" style="max-width: 600px;">
+      <h2 class="modal-title"><span>📜</span> Shashka Qoidalari</h2>
+      
+      <div class="rules-content">
+        <ol>
+          <li><strong>Doska va Donalar:</strong> O'yin 8x8 doskada faqat qora (to'q) kataklarda o'ynaladi. Har bir o'yinchida 12 tadan shashka bo'ladi. Birinchi bo'lib Oqlar yuradi.</li>
+          <li><strong>Oddiy shashka yurishi:</strong> Oddiy dona faqat diagonal (qiya) bo'ylab oldinga 1 katak siljishi mumkin.</li>
+          <li><strong>Oddiy shashka urishi:</strong> Oddiy dona raqib donasi ustidan sakrab uni uradi. Urish <strong>OLDINGA ham, ORQAGA ham</strong> mumkin!</li>
+          <li><strong>Urish majburiy (Majburiy urish):</strong> Agar biror donangizda urish imkoniyati bo'lsa, siz boshqa oddiy yurish qila olmaysiz — <strong>urish shart</strong>!</li>
+          <li><strong>Ketma-ket urish:</strong> Dona birinchi raqib donasini urganidan so'ng yana boshqa donani urish imkoni bo'lsa, o'sha yurishning o'zidayoq ketma-ket sakrab urishni davom ettirishi shart.</li>
+          <li><strong>Damka (Qirolicha) bo'lish:</strong> Shashka raqib tomonidagi oxirgi gorizontal chiziqqa yetib borsa, u Damkaga aylanadi (boshida toj 👑 paydo bo'ladi).</li>
+          <li><strong>Urish jarayonida Damkaga aylanish:</strong> Agar oddiy shashka ketma-ket urish jarayonida oxirgi qatorga borsa va u yerdan yangi damka sifatida urish imkoniyati bo'lsa, u <strong>darhol damkaga aylanadi</strong> va shu yurishning o'zida damka bo'lib urishni davom ettiradi!</li>
+          <li><strong>Uchadigan Damka (Uzoq masofali):</strong> Damka butun diagonal bo'ylab istalgan masofadagi bo'sh katakka ucha oladi. Shuningdek, uzoqdagi raqib donasini sakrab urib, uning orqasidagi istalgan bo'sh katakka qo'nishi mumkin.</li>
+          <li><strong>Turkcha zarba qoidasi:</strong> Barcha urilgan donalar faqat butun ko'p martalik urish tugagachgina doskadan olinadi. Bir dona ustidan bir yurishda ikki marta sakrash taqiqlanadi.</li>
+          <li><strong>G'alaba:</strong> Raqibning barcha shashkalarini urib tugatgan yoki raqibning barcha donalarini qamab (yurish imkonisiz) qo'ygan o'yinchi g'alaba qozonadi!</li>
+        </ol>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; margin-top: 20px;">
+        <button id="btnCloseRules" class="btn btn-primary" style="padding: 10px 24px;">
+          Tushunarli
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Winner / Game Over Modal -->
+  <div id="winnerModal" class="modal-overlay">
+    <div class="modal-dialog winner-dialog">
+      <div id="winnerIcon" class="winner-icon">🏆</div>
+      <h2 id="winnerTitle" class="winner-title">Tabriklaymiz!</h2>
+      <p id="winnerSubtitle" class="winner-subtitle">Oqlar g'alaba qozondi!</p>
+      
+      <div style="display: flex; gap: 10px; justify-content: center; margin-top: 20px;">
+        <button id="btnPlayAgain" class="btn btn-primary" style="padding: 12px 28px; font-size: 1rem;">
+          <span>🔄</span> Qayta o'ynash
+        </button>
+        <button id="btnCloseWinner" class="btn" style="padding: 12px 20px;">
+          Doskaga qarash
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="engine.js"></script>
+  <script src="audio.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
